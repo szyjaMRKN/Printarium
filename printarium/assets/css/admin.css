@@ -1,0 +1,55 @@
+/* Panel motywu Printarium (Wygląd → Printarium) */
+
+.printarium-admin__lead {
+	max-width: 780px;
+	font-size: 14px;
+	color: #50575e;
+}
+
+.printarium-admin__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+	gap: 20px;
+	margin-top: 20px;
+	align-items: start;
+}
+
+.printarium-card {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-left: 4px solid #829B2F;
+	border-radius: 6px;
+	padding: 20px 24px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+}
+
+.printarium-card h2 {
+	margin-top: 0;
+	font-size: 16px;
+}
+
+.printarium-card--danger { border-left-color: #d63638; }
+
+.printarium-steps,
+.printarium-checklist { margin: 16px 0; }
+
+.printarium-steps li { margin-bottom: 10px; line-height: 1.5; }
+
+.printarium-checklist { padding-left: 20px; }
+.printarium-checklist li { margin-bottom: 8px; line-height: 1.5; }
+
+.printarium-status {
+	margin: 0 0 20px;
+	border-top: 1px solid #f0f0f1;
+}
+.printarium-status li {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin: 0;
+	padding: 10px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+.printarium-status strong.is-ok { color: #007017; }
+.printarium-status strong.is-warn { color: #b32d2e; }

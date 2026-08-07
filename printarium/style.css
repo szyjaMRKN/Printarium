@@ -1,0 +1,20 @@
+/*
+Theme Name: Printarium
+Theme URI: https://printarium.pl
+Author: Printarium
+Author URI: https://printarium.pl
+Description: Ciemny, nowoczesny motyw WooCommerce dla sklepu z formikariami, terrariami i akcesoriami. Zbudowany na bazie systemu projektowego Printarium (ciemne tło, zielone akcenty, Montserrat).
+Version: 1.0.0
+Requires at least: 6.0
+Tested up to: 6.7
+Requires PHP: 7.4
+License: GNU General Public License v2 or later
+License URI: http://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: printarium
+Tags: e-commerce, dark, custom-menu, custom-logo, featured-images, translation-ready, block-styles, wide-blocks
+WC requires at least: 7.0
+WC tested up to: 9.5
+
+Ten plik zawiera wyłącznie nagłówek motywu wymagany przez WordPress.
+Właściwe style znajdują się w assets/css/main.css oraz assets/css/woocommerce.css
+*/
