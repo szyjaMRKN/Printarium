@@ -6,6 +6,11 @@ oraz systemu projektowego Printarium (UI Design System 01–03).
 Repozytorium zawiera źródła motywu (`printarium/`) oraz skrypt budujący paczkę ZIP
 gotową do wgrania w panelu WordPressa.
 
+Poza motywem znajduje się tu również osobny projekt sprzętowy:
+[`terrarium-thermostat/`](terrarium-thermostat/README.md) — termostat terrarium
+na module Seeed XIAO ESP32-C3 (czujnik DS18B20, przekaźnik maty grzewczej,
+sterowanie przez przeglądarkę).
+
 ---
 
 ## 1. Instalacja
