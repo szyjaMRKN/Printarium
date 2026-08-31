@@ -18,6 +18,7 @@ czas rozejść się po terrarium, a przekaźnik nie „klika” co kilkanaście 
 | Rezystor 4,7 kΩ | podciągający linię danych czujnika (obowiązkowy) |
 | Moduł przekaźnika 1-kanałowy | z optoizolacją, sterowany 3,3 V, styk min. 10 A / 250 V |
 | Mata grzewcza | zasilanie zgodne z jej instrukcją |
+| Termostat bimetaliczny + bezpiecznik termiczny | zabezpieczenie sprzętowe — patrz [sekcja 3](#3-termostat-bezpieczeństwa-mocno-zalecany) |
 
 Sterowanie przekaźnikiem musi działać z 3,3 V — część tanich modułów wymaga 5 V na
 wejściu IN i przy 3,3 V nie przełącza się pewnie. Moduł przekaźnika można zasilić
@@ -61,14 +62,68 @@ zasilania modułu grzanie jest wyłączone.
 
 > **Bezpieczeństwo.** Jeżeli mata jest zasilana z sieci 230 V, po stronie napięcia
 > sieciowego pracuj wyłącznie przy odłączonym zasilaniu, zamknij wszystko w obudowie
-> i użyj przewodów o odpowiednim przekroju. Program ma zabezpieczenia programowe
-> (odcięcie powyżej 45 °C, limit czasu grzania, wyłączenie przy awarii czujnika),
-> ale **nie zastępują one sprzętowego termostatu bezpieczeństwa** — przy zwierzętach
-> warto go dołożyć szeregowo z matą.
+> i użyj przewodów o odpowiednim przekroju. Program ma zabezpieczenia programowe,
+> ale **nie zastępują one sprzętowego termostatu bezpieczeństwa** — patrz sekcja 3.
 
 ---
 
-## 3. Wgranie programu
+## 3. Termostat bezpieczeństwa (mocno zalecany)
+
+Zabezpieczenia w programie (odcięcie powyżej 45 °C, limit 60 min grzania, wyłączenie
+przy utracie czujnika) działają tylko wtedy, gdy ESP i przekaźnik są sprawne.
+Nie pomogą w trzech realnych awariach:
+
+| Awaria | Skutek | Czy program pomoże |
+|---|---|---|
+| Zespawane styki przekaźnika | mata grzeje mimo sygnału „wyłącz" | nie — uszkodzenie mechaniczne |
+| Zawieszenie ESP przy włączonej macie | pętla stoi, przekaźnik trzyma | nie (restart tak, samo zawieszenie nie) |
+| Czujnik odklei się od maty / wypadnie z terrarium | DS18B20 pokazuje 24 °C powietrza, gdy mata ma 60 °C | tylko częściowo — próg 45 °C nie zadziała, zostaje limit czasu grzania |
+
+Trzeci przypadek zdarza się najczęściej. Dlatego w obwód zasilania maty warto wpiąć
+**szeregowo element czysto fizyczny**, niezależny od mikrokontrolera:
+
+```
+230 V (L) ─► styk NO przekaźnika ─► termostat bimetaliczny NC ─► bezpiecznik ─► mata ─► N
+                                    (rozwiera przy ~45 °C)      termiczny
+```
+
+### Co kupić
+
+| Element | Czego szukać | Cena | Uwagi |
+|---|---|---|---|
+| Termostat bimetaliczny | `KSD9700`, **NC**, **40 lub 45 °C**, 5 A/250 V | ok. 4–8 zł | podstawowe zabezpieczenie, samoczynnie wraca po ostygnięciu |
+| Bezpiecznik termiczny | 250 V / 10 A, **84 °C** (najniższy powszechnie dostępny) | ok. 5–10 zł | jednorazowy, ochrona przeciwpożarowa „ostatniej szansy" |
+| Opcjonalnie: gotowy sterownik z alarmem | Inkbird ITC-306T lub ITC-308 | ok. 150–250 zł | drugi, w pełni niezależny termostat z własną sondą i alarmem |
+
+**Krytyczne przy zakupie:** termostat bimetaliczny musi być w wersji **NC**
+(*normally closed* — rozwiera się od ciepła). Wersje **NO** działają odwrotnie
+i w tej roli są bezużyteczne. Sprzedawcy często mylą oznaczenia w tytułach ofert,
+więc sprawdź opis. Prąd 5 A / 250 V wystarcza z ogromnym zapasem dla maty 10–30 W.
+
+Gdzie szukać (linki do wyszukiwarek i stron producenta — pojedyncze oferty wygasają):
+
+- [Allegro — KSD9700](https://allegro.pl/listing?string=ksd9700) (wybierz wariant „NC 45C" albo „NC 40C")
+- [Allegro — bezpiecznik termiczny 10 A](https://allegro.pl/listing?string=bezpiecznik+termiczny+10a)
+- [Inkbird ITC-306T — strona producenta](https://www.inkbird.com/products/temperature-controller-itc-306t) (wyjście tylko grzewcze, alarm górny i dolny)
+- [Inkbird ITC-308 — strona producenta (PL)](https://www.inkbird.com/pl/products/temperature-controller-itc-308-wifi)
+
+### Montaż i test
+
+1. Termostat bimetaliczny przyklej **taśmą aluminiową do powierzchni maty** — ma mierzyć
+   to, co się grzeje, nie powietrze. Nigdy nie zostawiaj go luzem.
+2. Bezpiecznik termiczny wpina się szeregowo, w tym samym przewodzie fazowym.
+3. Gotowy sterownik (wariant trzeci) łączy się kaskadowo: gniazdko → Inkbird
+   (limit np. 33 °C) → przekaźnik ESP → mata. Grzanie wymaga wtedy zgody obu urządzeń.
+4. **Test po montażu:** wyjmij DS18B20 z terrarium i połóż w chłodnym miejscu.
+   Program będzie grzał w nieskończoność, a zabezpieczenie powinno odciąć matę.
+   To jedyny sposób, żeby sprawdzić, czy naprawdę działa.
+
+Progi dobieraj z zapasem 10–15 °C nad temperaturą zadaną: przy 28–30 °C w terrarium
+bimetal 45 °C i bezpiecznik 84 °C nie będą przeszkadzać w normalnej pracy.
+
+---
+
+## 4. Wgranie programu
 
 ### Arduino IDE
 
@@ -91,7 +146,7 @@ pio device monitor          # log pracy, 115200 baud
 
 ---
 
-## 4. Konfiguracja (`config.h`)
+## 5. Konfiguracja (`config.h`)
 
 Przed wgraniem ustaw co najmniej dane sieci:
 
@@ -109,7 +164,7 @@ domyślne, progi bezpieczeństwa i czas pomiędzy pomiarami.
 
 ---
 
-## 5. Obsługa przez przeglądarkę
+## 6. Obsługa przez przeglądarkę
 
 Po starcie moduł wypisuje na porcie szeregowym swój adres IP. Wejdź na:
 
@@ -130,7 +185,7 @@ Nastawy zapisują się w pamięci nieulotnej (NVS) i przeżywają zanik zasilani
 
 ---
 
-## 6. Jak to działa
+## 7. Jak to działa
 
 | Stan | Co się dzieje |
 |---|---|
@@ -152,7 +207,7 @@ Stan **awarii** włącza się, gdy:
 
 ---
 
-## 7. API
+## 8. API
 
 | Metoda | Ścieżka | Opis |
 |---|---|---|
@@ -179,7 +234,7 @@ więc błędne żądanie nie rozstroi termostatu.
 
 ---
 
-## 8. Test logiki bez sprzętu
+## 9. Test logiki bez sprzętu
 
 Katalog `test/` zawiera symulację: oryginalny szkic kompilowany na komputerze
 z atrapami bibliotek Arduino i prostym modelem cieplnym terrarium.
@@ -194,7 +249,7 @@ dwie godziny pracy ciągłej, utrata czujnika, przegrzanie i wyłączenie termos
 
 ---
 
-## 9. Typowe problemy
+## 10. Typowe problemy
 
 | Objaw | Przyczyna |
 |---|---|
