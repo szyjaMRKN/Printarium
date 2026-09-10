@@ -6,6 +6,11 @@ oraz systemu projektowego Printarium (UI Design System 01–03).
 Repozytorium zawiera źródła motywu (`printarium/`) oraz skrypt budujący paczkę ZIP
 gotową do wgrania w panelu WordPressa.
 
+Poza motywem znajduje się tu również osobne narzędzie:
+[`kalkulator-kabla-grzewczego/`](kalkulator-kabla-grzewczego/README.md) — kalkulator
+doboru rezystancji (Ω/m) kabla grzewczego dla zadanej długości, napięcia i mocy
+grzewczej.
+
 ---
 
 ## 1. Instalacja

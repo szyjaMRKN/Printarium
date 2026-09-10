@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="description" content="Kalkulator doboru rezystancji (Ω/m) kabla grzewczego dla zadanej długości, napięcia 5/12/24 V i mocy grzewczej.">
+<title>Dobór kabla grzewczego</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root{
+  --ground:#E9ECF1;
+  --surface:#FBFCFE;
+  --surface-2:#F1F4F8;
+  --ink:#12161D;
+  --ink-2:#3D4552;
+  --muted:#646E7D;
+  --line:#D3D9E2;
+  --line-strong:#B3BCCA;
+  --volt:#0F52C4;
+  --volt-ink:#0F52C4;
+  --volt-soft:#E2EBFB;
+  --on-volt:#FFFFFF;
+  --b-cold:#3E7CA6;
+  --b-cool:#4F94A8;
+  --b-ok:#15704E;
+  --b-warm:#B87512;
+  --b-hot:#C33B10;
+  --ok:#15704E;
+  --warn:#8A5100;
+  --warn-soft:#FBF0DD;
+  --crit:#A9231A;
+  --shadow:0 1px 2px rgba(18,22,29,.06), 0 8px 24px -12px rgba(18,22,29,.18);
+  --shadow-lift:0 2px 4px rgba(18,22,29,.08), 0 18px 40px -18px rgba(18,22,29,.30);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1116;
+    --surface:#161A21;
+    --surface-2:#1C212A;
+    --ink:#E8ECF3;
+    --ink-2:#BFC7D4;
+    --muted:#8B96A6;
+    --line:#262D38;
+    --line-strong:#3A4453;
+    --volt:#5C9DFF;
+    --volt-ink:#8FBBFF;
+    --volt-soft:#132844;
+  --on-volt:#0B0E13;
+    --on-volt:#0B0E13;
+    --b-cold:#6BA5CE;
+    --b-cool:#5FB3C4;
+    --b-ok:#3FBE8E;
+    --b-warm:#E0A33C;
+    --b-hot:#FF7043;
+    --ok:#3FBE8E;
+    --warn:#DCA240;
+    --warn-soft:#2A2113;
+    --crit:#F3705F;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1116;
+  --surface:#161A21;
+  --surface-2:#1C212A;
+  --ink:#E8ECF3;
+  --ink-2:#BFC7D4;
+  --muted:#8B96A6;
+  --line:#262D38;
+  --line-strong:#3A4453;
+  --volt:#5C9DFF;
+  --volt-ink:#8FBBFF;
+  --volt-soft:#132844;
+  --on-volt:#0B0E13;
+  --b-cold:#6BA5CE;
+  --b-cool:#5FB3C4;
+  --b-ok:#3FBE8E;
+  --b-warm:#E0A33C;
+  --b-hot:#FF7043;
+  --ok:#3FBE8E;
+  --warn:#DCA240;
+  --warn-soft:#2A2113;
+  --crit:#F3705F;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  --shadow-lift:0 2px 4px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.8);
+}
+
+*{box-sizing:border-box}
+img{max-width:100%}
+[hidden]{display:none !important}
+
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size:15px;
+  line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+
+.wrap{
+  max-width:1120px;
+  margin:0 auto;
+  padding-inline:20px;
+  padding-block:36px 56px;
+}
+
+/* ---------- masthead ---------- */
+.masthead{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  padding-bottom:26px;
+  margin-bottom:26px;
+  border-bottom:1px solid var(--line);
+}
+.eyebrow{
+  margin:0;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:11.5px;
+  font-weight:500;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--volt-ink);
+}
+h1{
+  margin:0;
+  font-family:Archivo, ui-sans-serif, system-ui, sans-serif;
+  font-weight:800;
+  font-size:clamp(30px, 5.2vw, 46px);
+  line-height:1.02;
+  letter-spacing:-.028em;
+  text-wrap:balance;
+}
+.lede{
+  margin:0;
+  max-width:62ch;
+  color:var(--ink-2);
+  font-size:16px;
+}
+
+/* ---------- layout ---------- */
+.workbench{
+  display:grid;
+  grid-template-columns:336px minmax(0,1fr);
+  gap:26px;
+  align-items:start;
+}
+@media (max-width:900px){
+  .workbench{grid-template-columns:minmax(0,1fr); gap:22px}
+  .controls{position:static !important}
+}
+
+.panel{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+}
+.controls{
+  position:sticky;
+  top:20px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  gap:22px;
+}
+
+/* ---------- form ---------- */
+.field{display:flex; flex-direction:column; gap:9px}
+.label{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:11px;
+  font-weight:500;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.len-row{display:flex; align-items:baseline; gap:10px}
+input[type=number]{
+  width:112px;
+  padding:9px 11px;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:19px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  color:var(--ink);
+  background:var(--surface-2);
+  border:1px solid var(--line-strong);
+  border-radius:7px;
+}
+.unit{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:13px;
+  color:var(--muted);
+}
+.unit b{color:var(--ink-2); font-weight:600}
+
+input[type=range]{
+  width:100%;
+  accent-color:var(--volt);
+  margin:0;
+}
+
+.seg{
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:1fr;
+  gap:4px;
+  padding:4px;
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  border-radius:9px;
+}
+.seg input{position:absolute; opacity:0; width:1px; height:1px}
+.seg label{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+  padding:8px 6px;
+  border-radius:6px;
+  cursor:pointer;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:13px;
+  font-weight:500;
+  color:var(--ink-2);
+  transition:background .12s ease, color .12s ease;
+}
+.seg label:hover{background:var(--volt-soft)}
+.seg input:checked + label{
+  background:var(--volt);
+  color:var(--on-volt);
+  font-weight:600;
+}
+.seg input:focus-visible + label{outline:2px solid var(--volt); outline-offset:2px}
+
+.target-row{display:flex; gap:10px; align-items:center}
+.target-row input[type=number]{width:96px}
+
+.hint{
+  margin:0;
+  font-size:12.5px;
+  line-height:1.5;
+  color:var(--muted);
+}
+
+/* ---------- verdict ---------- */
+.results{display:flex; flex-direction:column; gap:20px; min-width:0}
+
+.verdict{
+  padding:24px;
+  border-radius:10px;
+  border:1px solid var(--line);
+  background:var(--surface);
+  box-shadow:var(--shadow-lift);
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.verdict-head{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  gap:8px 20px;
+}
+.pick{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+}
+.pick-cap{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:11px;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.pick-val{
+  font-family:Archivo, ui-sans-serif, sans-serif;
+  font-weight:800;
+  font-size:clamp(38px, 7vw, 58px);
+  line-height:1;
+  letter-spacing:-.032em;
+  font-variant-numeric:tabular-nums;
+}
+.pick-val span{font-size:.44em; font-weight:600; letter-spacing:-.01em; color:var(--ink-2)}
+.badge{
+  align-self:center;
+  padding:5px 10px;
+  border-radius:999px;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:11.5px;
+  font-weight:600;
+  letter-spacing:.04em;
+  white-space:nowrap;
+}
+.badge.ok{background:var(--volt-soft); color:var(--volt-ink)}
+.badge.warn{background:var(--warn-soft); color:var(--warn)}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(126px, 1fr));
+  gap:1px;
+  background:var(--line);
+  border:1px solid var(--line);
+  border-radius:8px;
+  overflow:hidden;
+}
+.stat{
+  background:var(--surface);
+  padding:12px 14px;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.stat dt{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  min-height:2.3em;
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+.stat dd{
+  margin:0;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:19px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  color:var(--ink);
+}
+.stat dd small{font-size:12px; font-weight:400; color:var(--muted)}
+
+.verdict-note{
+  margin:0;
+  font-size:13.5px;
+  color:var(--ink-2);
+  padding-top:2px;
+}
+.verdict-note code{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:12.5px;
+  color:var(--ink);
+}
+
+/* ---------- alerts ---------- */
+.alert{
+  display:flex;
+  gap:11px;
+  padding:12px 14px;
+  border-radius:8px;
+  font-size:13.5px;
+  line-height:1.5;
+  background:var(--warn-soft);
+  color:var(--ink-2);
+  border-left:3px solid var(--warn);
+}
+.alert.crit{border-left-color:var(--crit)}
+.alert b{color:var(--ink)}
+.alert-mark{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-weight:600;
+  color:var(--warn);
+  flex:none;
+}
+.alert.crit .alert-mark{color:var(--crit)}
+.alerts{display:flex; flex-direction:column; gap:8px}
+
+/* ---------- table ---------- */
+.tablecard{
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:var(--shadow);
+  overflow:hidden;
+}
+.tablecard header{
+  padding:15px 18px 13px;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px 14px;
+  align-items:baseline;
+}
+.tablecard h2{
+  margin:0;
+  font-family:Archivo, sans-serif;
+  font-size:16px;
+  font-weight:700;
+  letter-spacing:-.012em;
+}
+.tablecard header p{margin:0; font-size:12.5px; color:var(--muted)}
+.scroller{overflow-x:auto}
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-variant-numeric:tabular-nums;
+}
+th, td{
+  padding:9px 14px;
+  text-align:right;
+  white-space:nowrap;
+  border-bottom:1px solid var(--line);
+}
+th{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:10.5px;
+  font-weight:500;
+  letter-spacing:.09em;
+  text-transform:uppercase;
+  color:var(--muted);
+  background:var(--surface-2);
+}
+th:first-child, td:first-child{text-align:left; padding-left:18px}
+th:last-child, td:last-child{padding-right:18px; width:34%; min-width:150px}
+tbody td{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:13.5px;
+  color:var(--ink-2);
+}
+tbody tr:last-child td{border-bottom:none}
+td.ohm{font-size:15px; font-weight:600; color:var(--ink)}
+tbody tr.best{background:var(--volt-soft)}
+tbody tr.best td.ohm{
+  box-shadow:inset 3px 0 0 var(--volt);
+  color:var(--volt-ink);
+}
+tbody tr.dim td{opacity:.55}
+.tag{
+  display:inline-block;
+  margin-left:8px;
+  padding:1px 7px;
+  border-radius:999px;
+  font-size:10.5px;
+  font-weight:600;
+  letter-spacing:.05em;
+  text-transform:uppercase;
+  vertical-align:1px;
+}
+.tag.first{background:var(--volt); color:var(--on-volt)}
+.tag.second{background:transparent; color:var(--muted); border:1px solid var(--line-strong)}
+
+/* meter */
+.meter{
+  position:relative;
+  height:9px;
+  border-radius:999px;
+  background:var(--surface-2);
+  border:1px solid var(--line);
+  overflow:hidden;
+}
+.meter i{
+  display:block;
+  height:100%;
+  width:var(--w, 0%);
+  border-radius:999px;
+  background:var(--bar, var(--b-cool));
+}
+.meter::after{
+  content:"";
+  position:absolute;
+  top:-2px; bottom:-2px;
+  left:50%;
+  width:1px;
+  background:var(--line-strong);
+}
+.meter-wrap{display:flex; flex-direction:column; gap:4px}
+.meter-cap{
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:10.5px;
+  letter-spacing:.04em;
+  text-align:left;
+  color:var(--bar, var(--muted));
+}
+.b-cold{--bar:var(--b-cold)} .b-cool{--bar:var(--b-cool)}
+.b-ok{--bar:var(--b-ok)} .b-warm{--bar:var(--b-warm)} .b-hot{--bar:var(--b-hot)}
+
+/* ---------- variant editor ---------- */
+.tablefoot{
+  padding:11px 18px;
+  border-top:1px solid var(--line);
+  background:var(--surface);
+}
+details.variants{
+  border-top:1px solid var(--line);
+  padding:14px 18px 16px;
+  background:var(--surface-2);
+}
+details.variants summary{
+  cursor:pointer;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:11.5px;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--volt-ink);
+  list-style:none;
+}
+details.variants summary::-webkit-details-marker{display:none}
+details.variants summary::before{content:"+ "; font-weight:600}
+details.variants[open] summary::before{content:"− "}
+.editor{display:flex; flex-direction:column; gap:9px; padding-top:12px}
+textarea{
+  width:100%;
+  min-height:62px;
+  resize:vertical;
+  padding:10px 12px;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:13px;
+  line-height:1.6;
+  color:var(--ink);
+  background:var(--surface);
+  border:1px solid var(--line-strong);
+  border-radius:7px;
+}
+.btn{
+  align-self:flex-start;
+  padding:7px 13px;
+  border-radius:7px;
+  border:1px solid var(--line-strong);
+  background:var(--surface);
+  color:var(--ink-2);
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:12px;
+  cursor:pointer;
+}
+.btn:hover{border-color:var(--volt); color:var(--volt-ink)}
+
+/* ---------- footer notes ---------- */
+.notes{
+  margin-top:34px;
+  padding-top:26px;
+  border-top:1px solid var(--line);
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));
+  gap:26px 34px;
+}
+.note h3{
+  margin:0 0 8px;
+  font-family:Archivo, sans-serif;
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:-.008em;
+}
+.note p{margin:0 0 9px; font-size:13.5px; color:var(--ink-2); max-width:62ch}
+.note p:last-child{margin-bottom:0}
+.formula{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+  padding:13px 15px;
+  margin:0 0 11px;
+  background:var(--surface);
+  border:1px solid var(--line);
+  border-radius:8px;
+  font-family:"IBM Plex Mono", ui-monospace, monospace;
+  font-size:13px;
+  color:var(--ink);
+  overflow-x:auto;
+}
+.formula span{color:var(--muted); font-size:11.5px; letter-spacing:.04em; text-transform:uppercase}
+
+:where(a, button, input, textarea, summary):focus-visible{
+  outline:2px solid var(--volt);
+  outline-offset:2px;
+  border-radius:4px;
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important; animation:none !important}
+}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Kalkulator Ω/m · 5 V i 12 V</p>
+    <h1>Dobór kabla grzewczego</h1>
+    <p class="lede">Podaj długość odcinka i napięcie zasilania — kalkulator wskaże, który wariant rezystancji wybrać z aukcji, żeby uzyskać moc grzewczą, przy której kabel osiąga temperaturę, jakiej szukasz.</p>
+  </header>
+
+  <div class="workbench">
+
+    <section class="panel controls" aria-label="Parametry">
+      <div class="field">
+        <label class="label" for="len">Długość odcinka</label>
+        <div class="len-row">
+          <input id="len" type="number" min="1" max="2000" step="1" value="50" inputmode="numeric">
+          <span class="unit">cm &nbsp;=&nbsp; <b id="lenM">0,50</b> m</span>
+        </div>
+        <input id="lenRange" type="range" min="5" max="300" step="1" value="50" aria-label="Długość odcinka w centymetrach">
+      </div>
+
+      <div class="field">
+        <span class="label" id="voltLabel">Napięcie zasilania</span>
+        <div class="seg" role="radiogroup" aria-labelledby="voltLabel">
+          <input type="radio" name="volt" id="v5" value="5">
+          <label for="v5">5 V</label>
+          <input type="radio" name="volt" id="v12" value="12" checked>
+          <label for="v12">12 V</label>
+          <input type="radio" name="volt" id="v24" value="24">
+          <label for="v24">24 V</label>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="label" id="modeLabel">Zadana moc</span>
+        <div class="seg" role="radiogroup" aria-labelledby="modeLabel">
+          <input type="radio" name="mode" id="mPerM" value="perM" checked>
+          <label for="mPerM">W / metr</label>
+          <input type="radio" name="mode" id="mTotal" value="total">
+          <label for="mTotal">W łącznie</label>
+        </div>
+        <div class="target-row">
+          <input id="target" type="number" min="0.1" max="500" step="0.5" value="10" inputmode="decimal">
+          <span class="unit" id="targetUnit">W na metr</span>
+        </div>
+        <p class="hint" id="modeHint">O temperaturze kabla decyduje moc <b>na metr</b>, nie moc łączna — ten sam odcinek 10&nbsp;W rozciągnięty dwa razy dłużej grzeje o połowę słabiej.</p>
+      </div>
+    </section>
+
+    <div class="results">
+
+      <section class="verdict" aria-live="polite">
+        <div class="verdict-head">
+          <div class="pick">
+            <span class="pick-cap">Wybierz wariant</span>
+            <span class="pick-val" id="pickVal">50 <span>Ω/m</span></span>
+          </div>
+          <span class="badge ok" id="pickBadge">trafienie w cel</span>
+        </div>
+
+        <dl class="stats">
+          <div class="stat"><dt>Moc na metr</dt><dd id="sPm">11,52 <small>W/m</small></dd></div>
+          <div class="stat"><dt>Moc łączna</dt><dd id="sPt">5,76 <small>W</small></dd></div>
+          <div class="stat"><dt>Pobór prądu</dt><dd id="sI">0,48 <small>A</small></dd></div>
+          <div class="stat"><dt>Rezystancja odcinka</dt><dd id="sR">25,0 <small>Ω</small></dd></div>
+          <div class="stat"><dt>Zasilacz min.</dt><dd id="sPsu">0,7 <small>A</small></dd></div>
+        </dl>
+
+        <p class="verdict-note" id="vNote"></p>
+        <div class="alerts" id="alerts"></div>
+      </section>
+
+      <section class="tablecard">
+        <header>
+          <h2>Wszystkie warianty z aukcji</h2>
+          <p id="tableSub">Dla 0,50 m przy 12 V — cel 10 W/m</p>
+        </header>
+        <div class="scroller">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Rezystancja</th>
+                <th scope="col">W / metr</th>
+                <th scope="col">W łącznie</th>
+                <th scope="col">Prąd</th>
+                <th scope="col">Względem celu</th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="tablefoot" id="tableFoot" hidden>
+          <button class="btn" id="showAll" type="button"></button>
+        </div>
+        <details class="variants">
+          <summary>Lista jest domyślna — dopasuj ją do wariantów z aukcji</summary>
+          <div class="editor">
+            <label class="hint" for="varList">Wpisz wartości Ω/m oferowane przez sprzedawcę, oddzielone spacją. Domyślna lista to typowy zestaw — sprawdź, co faktycznie jest w rozwijanym menu aukcji.</label>
+            <textarea id="varList" spellcheck="false"></textarea>
+            <button class="btn" id="resetVars" type="button">Przywróć domyślną listę</button>
+          </div>
+        </details>
+      </section>
+
+    </div>
+  </div>
+
+  <section class="notes">
+    <div class="note">
+      <h3>Skąd te wzory</h3>
+      <div class="formula">
+        <span>moc łączna</span>
+        P = U² / (L × R)
+        <span>moc na metr</span>
+        P/m = U² / (L² × R)
+        <span>szukana rezystancja</span>
+        R = U² / (L² × P/m)
+      </div>
+      <p>Dokładnie tak liczy sprzedawca: 12 V, 0,5 m, 50 Ω/m → 144 / (0,5 × 50) = <b>5,76 W</b> → 5,76 / 0,5 = <b>11,52 W/m</b>. Kalkulator odwraca ten rachunek i szuka R zamiast P.</p>
+      <p>Przy 0,5 m i 12 V ideał wypada na 57,6 Ω/m — akurat pomiędzy dostępnymi wariantami. Sprzedawca poleca <b>50 Ω/m</b> (11,52 W/m, nieco cieplej), sąsiedni 66 Ω/m daje 8,73 W/m. Kalkulator pokaże oba, bo wybór między nimi to już decyzja, czy wolisz grzać z zapasem, czy oszczędniej.</p>
+      <p>Zwróć uwagę, że moc na metr zależy od <b>kwadratu</b> długości. Dwa razy dłuższy odcinek przy tym samym wariancie grzeje cztery razy słabiej — dlatego rezystancja polecana dla 0,5 m nie zadziała dla 2 m.</p>
+    </div>
+
+    <div class="note">
+      <h3>Zanim klikniesz „kup"</h3>
+      <p><b>Rezystancja jest na metr.</b> Cały rachunek stoi na tym, że „50 Ω" na aukcji oznacza 50 Ω/m, a nie rezystancję gotowego odcinka — tak liczy sprzedawca, dzieląc przez (długość × rezystancja). Jeśli wariant opisuje rezystancję całego kabla, wzór jest inny; dopytaj przed zakupem.</p>
+      <p><b>Kabel utnij dokładnie.</b> Dobrana rezystancja obowiązuje przy podanej długości. Jeśli sprzedawca przysyła dłuższy odcinek, przytnij go do wyliczonej wartości, zanim podłączysz zasilanie.</p>
+      <p><b>Sterowanie termostatem.</b> Podane moce dotyczą 100% wypełnienia. Jeśli kablem steruje termostat (PWM albo przekaźnik), średnia moc będzie niższa — warto celować raczej w górną granicę zakresu.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var DEFAULT_VARIANTS = [1, 2, 3, 5, 6.6, 8, 10, 12, 15, 20, 25, 30, 33, 40, 50, 66, 80, 100];
+  var STORE = "kabel-grzewczy-v1";
+  var showEverything = false;
+
+  var el = {
+    len: document.getElementById("len"),
+    lenRange: document.getElementById("lenRange"),
+    lenM: document.getElementById("lenM"),
+    target: document.getElementById("target"),
+    targetUnit: document.getElementById("targetUnit"),
+    modeHint: document.getElementById("modeHint"),
+    pickVal: document.getElementById("pickVal"),
+    pickBadge: document.getElementById("pickBadge"),
+    sPm: document.getElementById("sPm"),
+    sPt: document.getElementById("sPt"),
+    sI: document.getElementById("sI"),
+    sR: document.getElementById("sR"),
+    sPsu: document.getElementById("sPsu"),
+    vNote: document.getElementById("vNote"),
+    alerts: document.getElementById("alerts"),
+    rows: document.getElementById("rows"),
+    tableFoot: document.getElementById("tableFoot"),
+    showAll: document.getElementById("showAll"),
+    tableSub: document.getElementById("tableSub"),
+    varList: document.getElementById("varList"),
+    resetVars: document.getElementById("resetVars")
+  };
+
+  function num(v, d){
+    if (!isFinite(v)) return "—";
+    return v.toLocaleString("pl-PL", {minimumFractionDigits: d, maximumFractionDigits: d});
+  }
+  function loose(v){
+    if (!isFinite(v)) return "—";
+    return v.toLocaleString("pl-PL", {maximumFractionDigits: 2});
+  }
+
+  function readVariants(){
+    var parts = el.varList.value.trim().split(/[\s;]+/);
+    // A lone token with several commas ("10,20,30") means commas were used as
+    // separators; otherwise a comma is the Polish decimal point ("6,6").
+    if (parts.length === 1 && (parts[0].match(/,/g) || []).length > 1){
+      parts = parts[0].split(",");
+    }
+    var out = [];
+    for (var i = 0; i < parts.length; i++){
+      var raw = parts[i].trim();
+      if (!raw) continue;
+      var n = parseFloat(raw.replace(",", "."));
+      if (isFinite(n) && n > 0 && out.indexOf(n) === -1) out.push(n);
+    }
+    out.sort(function(a, b){ return a - b; });
+    return out;
+  }
+
+  function band(ratio){
+    if (ratio < 0.75) return {cls: "b-cold", txt: "za chłodno"};
+    if (ratio < 0.9)  return {cls: "b-cool", txt: "nieco chłodniej"};
+    if (ratio <= 1.15) return {cls: "b-ok", txt: "w punkt"};
+    if (ratio <= 1.4) return {cls: "b-warm", txt: "nieco cieplej"};
+    return {cls: "b-hot", txt: "za gorąco"};
+  }
+
+  function save(state){
+    try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) {}
+  }
+  function load(){
+    try {
+      var raw = localStorage.getItem(STORE);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+
+  function alertBox(text, crit){
+    var d = document.createElement("div");
+    d.className = "alert" + (crit ? " crit" : "");
+    var m = document.createElement("span");
+    m.className = "alert-mark";
+    m.textContent = crit ? "!!" : "!";
+    var s = document.createElement("span");
+    s.innerHTML = text;
+    d.appendChild(m);
+    d.appendChild(s);
+    return d;
+  }
+
+  function render(){
+    var cm = parseFloat(el.len.value);
+    var L = (isFinite(cm) && cm > 0) ? cm / 100 : 0;
+    var U = parseFloat(document.querySelector('input[name=volt]:checked').value);
+    var perM = document.getElementById("mPerM").checked;
+    var target = parseFloat(el.target.value);
+    var variants = readVariants();
+
+    el.lenM.textContent = L > 0 ? num(L, 2) : "—";
+    el.targetUnit.textContent = perM ? "W na metr" : "W łącznie";
+    el.modeHint.innerHTML = perM
+      ? "O temperaturze kabla decyduje moc <b>na metr</b>, nie moc łączna — ten sam odcinek 10&nbsp;W rozciągnięty dwa razy dłużej grzeje o połowę słabiej."
+      : "Liczysz od mocy łącznej. Kalkulator przeliczy ją na moc na metr (" +
+        (L > 0 && isFinite(target) ? num(target / L, 2) + "&nbsp;W/m" : "—") + ") i po niej dobierze wariant.";
+
+    el.alerts.textContent = "";
+    el.rows.textContent = "";
+
+    if (!(L > 0) || !(isFinite(target) && target > 0) || !variants.length){
+      el.pickVal.innerHTML = "— <span>Ω/m</span>";
+      el.pickBadge.hidden = true;
+      el.vNote.textContent = "Uzupełnij długość, moc docelową i listę wariantów.";
+      ["sPm","sPt","sI","sR","sPsu"].forEach(function(k){ el[k].textContent = "—"; });
+      el.tableSub.textContent = "Brak danych do przeliczenia";
+      return;
+    }
+    el.pickBadge.hidden = false;
+
+    var targetPm = perM ? target : target / L;
+    var idealR = (U * U) / (L * L * targetPm);
+
+    var calc = variants.map(function(R){
+      var rTot = L * R;
+      var pTot = (U * U) / rTot;
+      var pM = pTot / L;
+      return {R: R, rTot: rTot, pTot: pTot, pM: pM, I: U / rTot, ratio: pM / targetPm};
+    });
+
+    var ranked = calc.slice().sort(function(a, b){
+      return Math.abs(Math.log(a.ratio)) - Math.abs(Math.log(b.ratio));
+    });
+    var best = ranked[0];
+    var second = ranked[1];
+
+    // --- verdict ---
+    el.pickVal.innerHTML = loose(best.R) + " <span>Ω/m</span>";
+    var bandBest = band(best.ratio);
+    var offPct = (best.ratio - 1) * 100;
+    el.pickBadge.textContent = bandBest.txt + (Math.abs(offPct) < 1 ? "" : " · " + (offPct > 0 ? "+" : "−") + num(Math.abs(offPct), 0) + "%");
+    el.pickBadge.className = "badge " + (bandBest.cls === "b-ok" ? "ok" : "warn");
+
+    el.sPm.innerHTML = num(best.pM, 2) + " <small>W/m</small>";
+    el.sPt.innerHTML = num(best.pTot, 2) + " <small>W</small>";
+    el.sI.innerHTML = num(best.I, 2) + " <small>A</small>";
+    el.sR.innerHTML = num(best.rTot, 1) + " <small>Ω</small>";
+    el.sPsu.innerHTML = num(Math.ceil(best.I * 1.3 * 10) / 10, 1) + " <small>A</small>";
+
+    var idealLen = U / Math.sqrt(best.R * targetPm);
+    el.vNote.innerHTML =
+      "Idealna rezystancja dla tych ustawień to <code>" + num(idealR, 1) + " Ω/m</code> — najbliżej jest wariant <code>" +
+      loose(best.R) + " Ω/m</code>" +
+      (second ? ", drugi wybór to <code>" + loose(second.R) + " Ω/m</code> (" + num(second.pM, 2) + " W/m)" : "") +
+      ". Gdybyś chciał trafić w cel co do wata przy wariancie " + loose(best.R) +
+      " Ω/m, odcinek musiałby mieć <code>" + num(idealLen * 100, 0) + " cm</code>.";
+
+    // --- alerts ---
+    if (Math.abs(offPct) > 25){
+      el.alerts.appendChild(alertBox(
+        "Żaden wariant z listy nie trafia blisko celu — najbliższy jest o <b>" + num(Math.abs(offPct), 0) +
+        "%</b> " + (offPct > 0 ? "za mocny" : "za słaby") + ". Zmień długość odcinka na <b>" + num(idealLen * 100, 0) +
+        " cm</b> albo dobierz inne napięcie.", true));
+    }
+    if (best.I > 5){
+      el.alerts.appendChild(alertBox(
+        "Pobór prądu <b>" + num(best.I, 2) + " A</b> jest wysoki. Sprawdź przekrój przewodów doprowadzających i obciążalność zasilacza oraz elementu sterującego.", best.I > 10));
+    }
+    if (U === 5 && best.I > 1.5){
+      el.alerts.appendChild(alertBox(
+        "Przy 5 V i <b>" + num(best.I, 2) + " A</b> spadek napięcia na cienkich przewodach doprowadzających realnie obniży moc grzania. Rozważ 12 V albo grubsze przewody.", false));
+    }
+    if (best.pM > 25){
+      el.alerts.appendChild(alertBox(
+        "<b>" + num(best.pM, 1) + " W/m</b> to dużo dla kabla pracującego bez odprowadzania ciepła. Upewnij się, że izolacja wytrzyma taką temperaturę, i nie zwijaj kabla ciasno.", best.pM > 40));
+    }
+
+    // --- table ---
+    el.tableSub.textContent = "Dla " + num(L, 2) + " m przy " + loose(U) + " V — cel " + num(targetPm, 1) + " W/m";
+
+    var inRange = function(c){
+      return c === best || c === second || (c.ratio >= 0.2 && c.ratio <= 5);
+    };
+    var skipped = calc.filter(function(c){ return !inRange(c); }).length;
+    var shown = (showEverything || !skipped) ? calc : calc.filter(inRange);
+
+    if (skipped){
+      el.tableFoot.hidden = false;
+      el.showAll.textContent = showEverything
+        ? "Ukryj warianty daleko poza celem"
+        : "Pokaż pozostałe warianty (" + skipped + ")";
+    } else {
+      el.tableFoot.hidden = true;
+    }
+
+    shown.forEach(function(c){
+      var b = band(c.ratio);
+      var tr = document.createElement("tr");
+      if (c === best) tr.className = "best";
+      else if (c.ratio < 0.4 || c.ratio > 2.5) tr.className = "dim";
+
+      var tag = "";
+      if (c === best) tag = '<span class="tag first">wybierz</span>';
+      else if (c === second) tag = '<span class="tag second">2. wybór</span>';
+
+      var w = Math.max(2, Math.min(100, (c.ratio / 2) * 100));
+
+      tr.innerHTML =
+        '<td class="ohm">' + loose(c.R) + ' Ω/m' + tag + '</td>' +
+        '<td>' + num(c.pM, 2) + '</td>' +
+        '<td>' + num(c.pTot, 2) + '</td>' +
+        '<td>' + num(c.I, 2) + ' A</td>' +
+        '<td><div class="meter-wrap ' + b.cls + '">' +
+          '<div class="meter"><i style="--w:' + w.toFixed(1) + '%"></i></div>' +
+          '<span class="meter-cap">' + b.txt + '</span>' +
+        '</div></td>';
+      el.rows.appendChild(tr);
+    });
+
+    save({
+      cm: el.len.value,
+      U: U,
+      perM: perM,
+      target: el.target.value,
+      vars: el.varList.value
+    });
+  }
+
+  // --- wiring ---
+  el.lenRange.addEventListener("input", function(){
+    el.len.value = el.lenRange.value;
+    render();
+  });
+  el.len.addEventListener("input", function(){
+    var v = parseFloat(el.len.value);
+    if (isFinite(v)) el.lenRange.value = Math.min(300, Math.max(5, v));
+    render();
+  });
+  el.target.addEventListener("input", render);
+  el.varList.addEventListener("input", render);
+  Array.prototype.forEach.call(document.querySelectorAll('input[name=volt], input[name=mode]'), function(r){
+    r.addEventListener("change", render);
+  });
+  el.showAll.addEventListener("click", function(){
+    showEverything = !showEverything;
+    render();
+  });
+  el.resetVars.addEventListener("click", function(){
+    el.varList.value = DEFAULT_VARIANTS.join(" ").replace(/\./g, ",");
+    render();
+  });
+
+  // --- boot ---
+  var saved = load();
+  el.varList.value = (saved && saved.vars) || DEFAULT_VARIANTS.join(" ").replace(/\./g, ",");
+  if (saved){
+    if (saved.cm){ el.len.value = saved.cm; el.lenRange.value = Math.min(300, Math.max(5, parseFloat(saved.cm) || 50)); }
+    if (saved.target) el.target.value = saved.target;
+    var vr = document.querySelector('input[name=volt][value="' + saved.U + '"]');
+    if (vr) vr.checked = true;
+    document.getElementById(saved.perM === false ? "mTotal" : "mPerM").checked = true;
+  }
+  render();
+})();
+</script>
+</body>
+</html>
