@@ -130,3 +130,54 @@ wszystkie pułapki wyżej wyszły dopiero na zrzutach ekranu.
 - Nie wpisuj numerów wersji ani nazw modeli w commity, kod i README.
 - Regulamin i polityka prywatności w importerze to celowo tylko szkielet —
   nie udawaj, że są gotowymi dokumentami prawnymi.
+
+---
+
+# Ewidencja działalności nierejestrowanej — druga aplikacja w repozytorium
+
+Na branchu `claude/unregistered-activity-app-uxg6hw` obok motywu żyje samodzielna
+aplikacja webowa (`backend/` + `frontend/`) do prowadzenia ewidencji polskiej
+działalności nierejestrowanej. Pełna dokumentacja: `README.md`.
+Dokumentacja motywu WooCommerce została przeniesiona do `docs-motyw-printarium.md`.
+
+## Układ
+
+```
+backend/     FastAPI + SQLAlchemy + Alembic + SQLite (services/, repositories/, api/)
+frontend/    React + TypeScript + Vite (pages/, features/, components/, api/)
+deploy/      Caddyfile i przykładowa konfiguracja Nginx
+data/ backups/ uploads/    dane środowiska (w .gitignore)
+```
+
+## Komendy
+
+```bash
+cd backend && python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+cd backend && .venv/bin/python -m pytest          # testy backendu
+cd backend && .venv/bin/python -m app.cli migrate # migracje + dane startowe
+cd frontend && npm install && npm test && npm run build
+docker compose config                              # walidacja wdrożenia
+```
+
+## Zasady, których nie wolno cofać
+
+1. **Kwoty tylko jako `int` w groszach** — nigdy float, także w API i schematach.
+2. **Limity, progi i mnożniki żyją w bazie** (`fiscal_years`, `settings`), nie w kodzie
+   liczącym. Limit kwartalny = minimalne wynagrodzenie × mnożnik (2026: 4806 zł × 225%).
+3. **Przychód należny ≠ przychód otrzymany.** Pierwszy liczy się od daty sprzedaży
+   (limit), drugi od daty wpłaty (PIT). Osobne pola, osobne zapytania.
+4. **Płatności to osobny model** — obsługa wpłat częściowych; zwrot pieniędzy to
+   płatność ujemna powiązana z korektą.
+5. **Nie usuwamy danych finansowych fizycznie** — soft delete (`deleted_at`) i korekty
+   z historią (wartość poprzednia, nowa, powód, użytkownik).
+6. **Kopie zapasowe wyłącznie przez SQLite Backup API** (`sqlite3.Connection.backup`),
+   nigdy `cp` na aktywnym pliku bazy. Przywracanie: weryfikacja → kopia bezpieczeństwa
+   → potwierdzenie → podmiana → migracje.
+7. **Przeliczenia sprzedaży tylko w `sales_service.recalculate`** — to jedyne miejsce
+   ustawiające `accrued_revenue_gr`, `paid_amount_gr` i `payment_status`.
+8. **Brak funkcji specyficznych dla SQLite w logice** (grupowanie po datach robimy
+   w Pythonie), żeby dało się przejść na PostgreSQL.
+9. **Sesja w ciasteczku HttpOnly + token CSRF w nagłówku**; żadnych tokenów
+   w `localStorage`.
+10. **Puste wpisy w `.env`** (np. `COOKIE_SECURE=`) muszą być traktowane jak brak
+    wartości — obsługuje to walidator w `app/core/config.py`.

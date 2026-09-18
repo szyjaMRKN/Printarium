@@ -1,0 +1,60 @@
+# Produkcyjne uruchomienie ewidencji działalności nierejestrowanej.
+#
+#   cp .env.example .env   (i uzupełnij wartości)
+#   mkdir -p data backups uploads
+#   docker compose up -d --build
+#
+# Dane (baza, kopie zapasowe, załączniki) leżą w katalogach hosta i nie są
+# usuwane przy aktualizacji obrazów.
+
+services:
+  backend:
+    build:
+      context: ./backend
+    image: ewidencja-backend:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      APP_ENV: production
+      DATA_DIR: /data
+      BACKUP_DIR: /backups
+      UPLOAD_DIR: /uploads
+    # Ustaw APP_UID/APP_GID na własnego użytkownika (id -u / id -g),
+    # żeby pliki w ./data, ./backups i ./uploads były Twoje.
+    user: "${APP_UID:-10001}:${APP_GID:-10001}"
+    volumes:
+      - ./data:/data
+      - ./backups:/backups
+      - ./uploads:/uploads
+    # Backend celowo nie publikuje portu na hoście — dostęp wyłącznie przez proxy.
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  web:
+    build:
+      context: ./frontend
+    image: ewidencja-web:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

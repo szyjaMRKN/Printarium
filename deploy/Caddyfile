@@ -1,0 +1,48 @@
+# Caddy: HTTPS (Let's Encrypt automatycznie), statyczny frontend i proxy do API.
+#
+# Domenę i adres e-mail ustaw w pliku .env (APP_DOMAIN, ACME_EMAIL).
+# Dla testów lokalnych APP_DOMAIN=localhost — Caddy wystawi wtedy certyfikat lokalny.
+
+{
+	email {$ACME_EMAIL}
+	# Zdejmij komentarz, aby korzystać ze środowiska testowego Let's Encrypt:
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+{$APP_DOMAIN:localhost} {
+	encode zstd gzip
+
+	# API i health check trafiają do backendu — baza SQLite nigdy nie jest
+	# wystawiona na zewnątrz, jedyną drogą do danych jest to proxy.
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	handle /health {
+		reverse_proxy backend:8000
+	}
+
+	# Reszta to aplikacja jednostronicowa.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# 'unsafe-inline' dla stylów jest potrzebny, bo biblioteka wykresów
+		# ustawia style bezpośrednio na elementach SVG.
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

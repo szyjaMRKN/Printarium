@@ -10,10 +10,10 @@ from __future__ import annotations
 import secrets
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 REPO_DIR = BASE_DIR.parent
@@ -56,7 +56,11 @@ class Settings(BaseSettings):
 
     # --- API / dokumentacja ---
     enable_docs: bool = True
-    cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+    # NoDecode: wartość z .env jest listą rozdzieloną przecinkami, nie JSON-em.
+    cors_origins: Annotated[list[str], NoDecode] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ]
     api_prefix: str = "/api"
 
     # --- pliki ---
@@ -76,12 +80,24 @@ class Settings(BaseSettings):
     # --- PDF ---
     pdf_font_path: str = ""
 
+    @model_validator(mode="before")
+    @classmethod
+    def _ignore_empty_values(cls, values: object) -> object:
+        """Puste wpisy w .env (np. `COOKIE_SECURE=`) traktujemy jak brak wartości."""
+        if isinstance(values, dict):
+            return {
+                key: value
+                for key, value in values.items()
+                if key.lower() == "cors_origins" or not (isinstance(value, str) and value.strip() == "")
+            }
+        return values
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def _split_origins(cls, value: object) -> object:
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
-        return value
+        return value or []
 
     @property
     def is_production(self) -> bool:
