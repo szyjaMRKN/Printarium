@@ -2,3 +2,19 @@ dist/
 node_modules/
 *.bak
 .DS_Store
+
+# Aplikacja ewidencji — dane lokalne i artefakty builda
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+data/
+backups/
+uploads/
+.env
+.env.local
+frontend/dist/
+frontend/coverage/
