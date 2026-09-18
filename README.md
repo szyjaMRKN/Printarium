@@ -135,6 +135,8 @@ deploy/                  Caddyfile oraz przykładowa konfiguracja Nginx
   cyberfolks/            wdrożenie na hosting współdzielony (Passenger)
     passenger_wsgi.py    plik startowy aplikacji na serwerze
     build-package.sh     buduje dist/ewidencja-hosting.zip do wgrania w panelu
+    diagnostyka.py       raport o stanie wdrożenia (uruchamiany z panelu)
+    konsola.py           polecenia administracyjne bez SSH
     INSTRUKCJA.txt       skrócona instrukcja dołączana do paczki
 data/                    baza SQLite (poza katalogiem publicznym)
 backups/                 kopie zapasowe
@@ -385,7 +387,26 @@ uruchamiać nawet co godzinę. Kopie na żądanie robisz jak zwykle na ekranie
 Kopie leżą w `backups/` na tym samym dysku co baza — raz w miesiącu pobierz je
 na własny komputer (ekran *Backup* → „Pobierz”).
 
-### 7.8. Aktualizacja
+### 7.8. Narzędzia bez SSH — pole „Wykonaj skrypt Python"
+
+Na hostingu bez dostępu SSH rolę wiersza poleceń pełni pole *Wykonaj skrypt
+Python* w panelu (*Aplikacje Python*). W paczce są dwa skrypty:
+
+| Polecenie w panelu | Co robi |
+|---|---|
+| `diagnostyka.py` | sprawdza wersję Pythona, pliki, zależności, reguły `.htaccess` i próbuje uruchomić aplikację; raport zapisuje do `diagnostyka.txt` obok skryptu |
+| `konsola.py migrate` | migracje bazy |
+| `konsola.py list-users` | lista kont |
+| `konsola.py reset-password --login admin --password NoweHaslo123` | nowe hasło użytkownika |
+| `konsola.py backup` | kopia zapasowa na żądanie |
+
+`diagnostyka.py` celowo działa także na starszym Pythonie — jeśli aplikacja nie
+startuje przez złą wersję interpretera, raport i tak powstanie i to powie.
+
+Hasło podane w polu polecenia zostaje zapisane w konfiguracji aplikacji, więc
+po zmianie hasła wyczyść to pole.
+
+### 7.9. Aktualizacja
 
 1. Zrób kopię zapasową (ekran *Backup*).
 2. Zbuduj nową paczkę tym samym poleceniem co poprzednio.
@@ -397,7 +418,10 @@ na własny komputer (ekran *Backup* → „Pobierz”).
 5. W panelu zainstaluj zależności ponownie i zrestartuj aplikację — migracje
    wykonają się przy starcie.
 
-### 7.9. Gdy coś nie działa
+### 7.10. Gdy coś nie działa
+
+Pierwszy krok przy każdym z tych objawów: uruchom `diagnostyka.py` (punkt 7.8)
+i przeczytaj sekcję „WNIOSEK" w raporcie.
 
 | Objaw | Przyczyna i rozwiązanie |
 |---|---|
@@ -408,7 +432,7 @@ na własny komputer (ekran *Backup* → „Pobierz”).
 | puste strony, w konsoli błędy 404 na plikach `assets/` | paczka zbudowana dla innego adresu niż rzeczywisty — zbuduj ją ponownie z właściwą ścieżką |
 | zmiany w `.env` nic nie dają | po każdej zmianie trzeba zrestartować aplikację w panelu |
 
-### 7.10. Czym ten wariant różni się od Dockera
+### 7.11. Czym ten wariant różni się od Dockera
 
 - HTTPS i domena pochodzą z panelu hostingu, nie z Caddy'ego.
 - Automatyczne kopie zapasowe uruchamia cron (punkt 7.7), a nie pętla w tle.
@@ -511,7 +535,7 @@ docker compose start backend
 
 ## 11. Aktualizacja aplikacji
 
-Wariant z Dockerem. Dla hostingu współdzielonego aktualizację opisuje punkt 7.8.
+Wariant z Dockerem. Dla hostingu współdzielonego aktualizację opisuje punkt 7.9.
 
 ```bash
 cd ewidencja

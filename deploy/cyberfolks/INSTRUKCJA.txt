@@ -38,8 +38,22 @@ Pełny opis z obrazkami: README.md, rozdział "Hosting współdzielony".
    z katalogiem roboczym /home/UŻYTKOWNIK/ewidencja/backend
    (dokładną ścieżkę do Pythona pokazuje panel w sekcji "Wejdź do virtualenv").
 
+NARZĘDZIA URUCHAMIANE Z PANELU (bez SSH)
+----------------------------------------
+PANEL -> Aplikacje Python -> pole "Wykonaj skrypt Python":
+
+  diagnostyka.py              sprawdza całe wdrożenie i zapisuje raport
+                              do pliku diagnostyka.txt w katalogu aplikacji
+  konsola.py migrate          migracje bazy
+  konsola.py list-users       lista kont
+  konsola.py reset-password --login admin --password NoweHaslo123
+  konsola.py backup           kopia zapasowa na żądanie
+
+Po użyciu polecenia z hasłem wyczyść pole w panelu.
+
 CO SPRAWDZIĆ, GDY COŚ NIE DZIAŁA
 --------------------------------
+- uruchom diagnostyka.py i przeczytaj sekcję "WNIOSEK" w raporcie
 - https://twojadomena.pl/ewidencja/health powinno zwrócić {"status":"ok",...}
 - błędy startu aplikacji trafiają do pliku stderr.log w katalogu aplikacji
   oraz do logów domeny w panelu

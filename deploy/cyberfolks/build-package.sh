@@ -48,6 +48,10 @@ tar --exclude='.venv' --exclude='__pycache__' --exclude='*.pyc' --exclude='tests
 
 cp -r "${REPO_DIR}/frontend/dist/." "${BUILD_DIR}/frontend/"
 cp "${REPO_DIR}/deploy/cyberfolks/passenger_wsgi.py" "${BUILD_DIR}/passenger_wsgi.py"
+# Narzędzia obsługiwane z panelu (pole "Wykonaj skrypt Python") — na hostingu
+# bez SSH to jedyna droga do diagnostyki i poleceń administracyjnych.
+cp "${REPO_DIR}/deploy/cyberfolks/diagnostyka.py" "${BUILD_DIR}/diagnostyka.py"
+cp "${REPO_DIR}/deploy/cyberfolks/konsola.py" "${BUILD_DIR}/konsola.py"
 # Kopia na wierzchu: panel instaluje zależności z pliku w katalogu aplikacji.
 cp "${REPO_DIR}/backend/requirements.txt" "${BUILD_DIR}/requirements.txt"
 cp "${REPO_DIR}/deploy/cyberfolks/INSTRUKCJA.txt" "${BUILD_DIR}/INSTRUKCJA.txt"
