@@ -233,3 +233,32 @@ def test_retencja_kopii(auth_client: TestClient):
         auth_client.post("/api/backups", json={})
     pliki = list(Path(backup_service.backup_dir()).glob("backup_*.sqlite3"))
     assert len(pliki) <= 2
+
+
+def test_harmonogram_automatycznych_kopii(db_session, monkeypatch):
+    """Automatyczna kopia powstaje raz dziennie po ustawionej godzinie."""
+    from datetime import datetime, timedelta
+
+    from app.core.dates import WARSAW
+    from app.services import backup_service
+    from app.services.settings_service import SettingsService
+
+    SettingsService(db_session).set_many(
+        {"backup.auto_enabled": True, "backup.auto_hour": 3, "backup.auto_minute": 0}
+    )
+    dzien = datetime(2026, 9, 18, tzinfo=WARSAW)
+
+    # Przed godziną 3:00 nic się nie dzieje.
+    assert backup_service.due_for_automatic_backup(db_session, dzien.replace(hour=2)) is False
+    # Po 3:00 kopia jest należna...
+    assert backup_service.due_for_automatic_backup(db_session, dzien.replace(hour=4)) is True
+
+    backup = backup_service.create_backup(db_session, automatic=True, note="harmonogram")
+    assert "_auto" in backup.filename
+    # ...ale tylko raz dziennie.
+    assert backup_service.due_for_automatic_backup(db_session, datetime.now(tz=WARSAW)) is False
+
+    # Wyłączony harmonogram nie tworzy kopii.
+    SettingsService(db_session).set_many({"backup.auto_enabled": False})
+    jutro = datetime.now(tz=WARSAW) + timedelta(days=1)
+    assert backup_service.due_for_automatic_backup(db_session, jutro) is False

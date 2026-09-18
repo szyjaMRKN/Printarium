@@ -236,7 +236,11 @@ export function SettingsPage() {
                 onChange={(event) => setValue('fiscal.strong_warning_percent', Number(event.target.value))}
               />
             </Field>
-            <Field label="Maksymalny rozmiar pliku (MB)" htmlFor="uploads.max_size_mb">
+            <Field
+              label="Maksymalny rozmiar pliku (MB)"
+              htmlFor="uploads.max_size_mb"
+              hint="Nie większy niż limit serwera (MAX_UPLOAD_MB)"
+            >
               <input
                 id="uploads.max_size_mb"
                 type="number"
