@@ -19,16 +19,17 @@ strefa czasowa `Europe/Warsaw`.
 4. [Development — uruchomienie lokalne](#4-development--uruchomienie-lokalne)
 5. [Produkcja — Docker Compose](#5-produkcja--docker-compose)
 6. [Domena i HTTPS](#6-domena-i-https)
-7. [Pierwsze uruchomienie i konto administratora](#7-pierwsze-uruchomienie-i-konto-administratora)
-8. [Kopie zapasowe](#8-kopie-zapasowe)
-9. [Przywracanie danych](#9-przywracanie-danych)
-10. [Aktualizacja aplikacji](#10-aktualizacja-aplikacji)
-11. [Migracje bazy danych](#11-migracje-bazy-danych)
-12. [API i dokumentacja OpenAPI](#12-api-i-dokumentacja-openapi)
-13. [Testy](#13-testy)
-14. [Bezpieczeństwo](#14-bezpieczeństwo)
-15. [Rozbudowa w przyszłości](#15-rozbudowa-w-przyszłości)
-16. [Zastrzeżenie](#16-zastrzeżenie)
+7. [Hosting współdzielony — cyber_Folks i inne panele DirectAdmin](#7-hosting-współdzielony--cyber_folks-i-inne-panele-directadmin)
+8. [Pierwsze uruchomienie i konto administratora](#8-pierwsze-uruchomienie-i-konto-administratora)
+9. [Kopie zapasowe](#9-kopie-zapasowe)
+10. [Przywracanie danych](#10-przywracanie-danych)
+11. [Aktualizacja aplikacji](#11-aktualizacja-aplikacji)
+12. [Migracje bazy danych](#12-migracje-bazy-danych)
+13. [API i dokumentacja OpenAPI](#13-api-i-dokumentacja-openapi)
+14. [Testy](#14-testy)
+15. [Bezpieczeństwo](#15-bezpieczeństwo)
+16. [Rozbudowa w przyszłości](#16-rozbudowa-w-przyszłości)
+17. [Zastrzeżenie](#17-zastrzeżenie)
 
 ---
 
@@ -131,6 +132,10 @@ frontend/                interfejs (React + TypeScript + Vite)
     pages/               ekrany aplikacji
     types/, utils/       typy i formatowanie (kwoty, daty)
 deploy/                  Caddyfile oraz przykładowa konfiguracja Nginx
+  cyberfolks/            wdrożenie na hosting współdzielony (Passenger)
+    passenger_wsgi.py    plik startowy aplikacji na serwerze
+    build-package.sh     buduje dist/ewidencja-hosting.zip do wgrania w panelu
+    INSTRUKCJA.txt       skrócona instrukcja dołączana do paczki
 data/                    baza SQLite (poza katalogiem publicznym)
 backups/                 kopie zapasowe
 uploads/                 załączniki dokumentów kosztowych
@@ -256,7 +261,169 @@ zbuduj (`cd frontend && npm ci && npm run build`) i skopiuj do `/var/www/ewidenc
 
 ---
 
-## 7. Pierwsze uruchomienie i konto administratora
+## 7. Hosting współdzielony — cyber_Folks i inne panele DirectAdmin
+
+Wariant dla zwykłego hostingu WWW, bez Dockera i bez uprawnień administratora
+serwera. Aplikację uruchamia **Passenger** z modułu *Aplikacje Python* w panelu
+DirectAdmin; ten sam proces serwuje API i interfejs, więc nie trzeba osobnego
+serwera plików statycznych. Dostęp SSH jest wygodny, ale niekonieczny — całość
+da się przeklikać w panelu.
+
+Czego wymaga hosting:
+
+| Wymaganie | Uwagi |
+|---|---|
+| moduł *Aplikacje Python* (Passenger) | Python 3.11 lub nowszy |
+| instalacja zależności z `requirements.txt` | przycisk w panelu albo SSH |
+| zadania cron | do automatycznych kopii zapasowych |
+| certyfikat SSL dla domeny | wymagany — ciasteczko sesji ma flagę `Secure` |
+| ok. 300 MB miejsca | kod, środowisko Pythona, baza i kopie zapasowe |
+
+### 7.1. Zbuduj paczkę
+
+Paczka zawiera backend, zbudowany interfejs, plik startowy Passengera i wzór
+konfiguracji z wygenerowanym `SECRET_KEY` oraz hasłem startowym administratora.
+
+```bash
+./deploy/cyberfolks/build-package.sh /ewidencja   # aplikacja pod adresem domena.pl/ewidencja
+./deploy/cyberfolks/build-package.sh /            # własna domena lub subdomena
+```
+
+Wynik: `dist/ewidencja-hosting.zip`. Skrypt wypisuje na końcu hasło startowe
+administratora — zapisz je.
+
+Adres podany przy budowaniu jest wkompilowany w interfejs (ścieżki do plików
+i do API). Zmiana adresu na serwerze wymaga zbudowania paczki od nowa.
+
+Bez Node.js na własnym komputerze: zakładka **Actions → Paczka na hosting →
+Run workflow** w repozytorium na GitHubie zbuduje ZIP do pobrania
+(hasło startowe jest wtedy w pliku `.env.przyklad` wewnątrz paczki).
+
+### 7.2. Utwórz aplikację w panelu
+
+*Panel → Aplikacje Python → Utwórz aplikację*:
+
+| Pole | Wartość |
+|---|---|
+| wersja Pythona | 3.11 lub nowsza |
+| katalog aplikacji (*Application root*) | `ewidencja` — poza `public_html` |
+| adres aplikacji (*Application URL*) | `twojadomena.pl/ewidencja` |
+| plik startowy (*Application startup file*) | `passenger_wsgi.py` |
+| punkt wejścia (*Application Entry point*) | `application` |
+
+Katalog aplikacji **musi leżeć poza `public_html`** — w środku trzymana jest
+baza, kopie zapasowe i załączniki. Panel sam utworzy środowisko wirtualne
+i katalog aplikacji w domenie.
+
+### 7.3. Wgraj pliki
+
+*Menedżer plików* → katalog aplikacji (np. `/home/UŻYTKOWNIK/ewidencja`):
+
+1. wgraj `ewidencja-hosting.zip`,
+2. rozpakuj go w tym katalogu (nadpisując `passenger_wsgi.py` utworzony przez panel),
+3. usuń plik ZIP,
+4. zmień nazwę `.env.przyklad` na `.env`.
+
+Po rozpakowaniu w katalogu aplikacji są: `passenger_wsgi.py`, `requirements.txt`,
+`backend/`, `frontend/`, `data/`, `backups/`, `uploads/`, `.env`.
+
+### 7.4. Sprawdź `.env`
+
+```env
+APP_ENV=production
+SECRET_KEY=<wygenerowany przez skrypt — nie zmieniaj>
+FRONTEND_DIR=frontend
+ADMIN_LOGIN=admin
+ADMIN_PASSWORD=<hasło startowe>
+ENABLE_DOCS=0
+COOKIE_SECURE=
+```
+
+`COOKIE_SECURE` zostaw puste — w trybie produkcyjnym aplikacja sama włącza flagę
+`Secure`, więc domena musi działać po HTTPS.
+
+### 7.5. Zainstaluj zależności i uruchom
+
+*Panel → Aplikacje Python → edycja aplikacji*: wskaż `requirements.txt`, uruchom
+instalację zależności (pip), a potem zrestartuj aplikację. Przy pierwszym starcie
+aplikacja wykonuje migracje, wgrywa dane słownikowe i zakłada konto administratora
+ze zmiennych z `.env`.
+
+Sprawdzenie: `https://twojadomena.pl/ewidencja/health` powinno zwrócić
+`{"status":"ok","database":"ok",...}`.
+
+Mając SSH, te same kroki to:
+
+```bash
+source /home/UŻYTKOWNIK/virtualenv/ewidencja/3.11/bin/activate
+cd /home/UŻYTKOWNIK/ewidencja
+pip install -r requirements.txt
+cd backend && python -m app.cli migrate
+```
+
+### 7.6. Pierwsze logowanie
+
+Zaloguj się na `https://twojadomena.pl/ewidencja`, zmień hasło w *Ustawienia →
+Moje konto*, a następnie wyczyść wartość `ADMIN_PASSWORD` w `.env` i zrestartuj
+aplikację w panelu.
+
+### 7.7. Automatyczne kopie zapasowe (cron)
+
+Pod Passengerem proces jest usypiany między żądaniami, więc harmonogram kopii
+obsługuje cron, a nie pętla w tle. *Panel → Zadania cron*, codziennie o 3:00:
+
+```bash
+cd /home/UŻYTKOWNIK/ewidencja/backend && /home/UŻYTKOWNIK/virtualenv/ewidencja/3.11/bin/python -m app.cli auto-backup
+```
+
+Dokładną ścieżkę do Pythona pokazuje panel w polu „Wejdź do środowiska
+wirtualnego”. Polecenie sprawdza godzinę i ustawienia z aplikacji (*Ustawienia →
+Aplikacja*) i tworzy kopię tylko wtedy, gdy jest zaplanowana, więc można je
+uruchamiać nawet co godzinę. Kopie na żądanie robisz jak zwykle na ekranie
+*Backup*.
+
+Kopie leżą w `backups/` na tym samym dysku co baza — raz w miesiącu pobierz je
+na własny komputer (ekran *Backup* → „Pobierz”).
+
+### 7.8. Aktualizacja
+
+1. Zrób kopię zapasową (ekran *Backup*).
+2. Zbuduj nową paczkę tym samym poleceniem co poprzednio.
+3. Wgraj i rozpakuj ją w katalogu aplikacji — nadpisz `backend/`, `frontend/`,
+   `passenger_wsgi.py` i `requirements.txt`.
+4. **Nie nadpisuj `.env`** — paczka zawiera tylko `.env.przyklad`, więc
+   konfiguracja i klucz zostają nietknięte. Nie ruszaj też `data/`, `backups/`
+   ani `uploads/`.
+5. W panelu zainstaluj zależności ponownie i zrestartuj aplikację — migracje
+   wykonają się przy starcie.
+
+### 7.9. Gdy coś nie działa
+
+| Objaw | Przyczyna i rozwiązanie |
+|---|---|
+| błąd 500 zaraz po wgraniu | zajrzyj do `stderr.log` w katalogu aplikacji i do logów domeny w panelu; najczęściej brak zainstalowanych zależności albo brak pliku `.env` |
+| „Brak SECRET_KEY…” w logu | plik nadal nazywa się `.env.przyklad` albo leży w złym katalogu (ma być w katalogu aplikacji, obok `passenger_wsgi.py`) |
+| strona główna działa, podstrony dają 404 WordPressa | reguły WordPressa z `public_html/.htaccess` przechwytują adresy aplikacji — w `public_html/ewidencja/.htaccess` dopisz na początku `RewriteEngine On` i `RewriteRule ^ - [L]` |
+| logowanie od razu wylogowuje | domena działa po HTTP — włącz certyfikat SSL i wymuszenie HTTPS w panelu |
+| puste strony, w konsoli błędy 404 na plikach `assets/` | paczka zbudowana dla innego adresu niż rzeczywisty — zbuduj ją ponownie z właściwą ścieżką |
+| zmiany w `.env` nic nie dają | po każdej zmianie trzeba zrestartować aplikację w panelu |
+
+### 7.10. Czym ten wariant różni się od Dockera
+
+- HTTPS i domena pochodzą z panelu hostingu, nie z Caddy'ego.
+- Automatyczne kopie zapasowe uruchamia cron (punkt 7.7), a nie pętla w tle.
+- Pliki statyczne serwuje Python, a nie wyspecjalizowany serwer — przy jednym
+  użytkowniku nie ma to znaczenia, ale jest wolniejsze niż wariant z Caddy.
+- Baza SQLite i tak trzyma dane w plikach, więc funkcjonalnie nic nie ubywa:
+  limity, dokumenty, raporty, PDF-y i kopie zapasowe działają tak samo.
+
+Subdomena (np. `ewidencja.twojadomena.pl`) jest wygodniejsza niż podkatalog —
+nie ma wtedy ryzyka konfliktu z regułami `.htaccess` sklepu WordPress. Paczkę
+budujesz wtedy poleceniem `./deploy/cyberfolks/build-package.sh /`.
+
+---
+
+## 8. Pierwsze uruchomienie i konto administratora
 
 Administrator powstaje na dwa sposoby.
 
@@ -291,7 +458,7 @@ Kolejnych użytkowników dodasz w *Ustawienia → Użytkownicy*. Role: administr
 
 ---
 
-## 8. Kopie zapasowe
+## 9. Kopie zapasowe
 
 Kopie wykonuje **SQLite Backup API** — kopiowanie działającego pliku zwykłym `cp`
 grozi uszkodzoną kopią i nie jest tu stosowane.
@@ -320,7 +487,7 @@ Zalecenie: przynajmniej raz w miesiącu skopiuj `backups/` i `uploads/` poza ser
 
 ---
 
-## 9. Przywracanie danych
+## 10. Przywracanie danych
 
 Ekran *Backup* → „Przywróć” przy wybranej kopii. Aplikacja kolejno:
 
@@ -342,7 +509,9 @@ docker compose start backend
 
 ---
 
-## 10. Aktualizacja aplikacji
+## 11. Aktualizacja aplikacji
+
+Wariant z Dockerem. Dla hostingu współdzielonego aktualizację opisuje punkt 7.8.
 
 ```bash
 cd ewidencja
@@ -359,11 +528,11 @@ w katalogach hosta (`data/`, `backups/`, `uploads/`) montowanych do kontenera.
 Migracje wykonują się automatycznie przy starcie kontenera i nie kasują danych.
 
 Wycofanie zmiany: `git checkout <poprzedni-tag>` i ponowny `docker compose up -d --build`,
-w razie potrzeby wraz z przywróceniem kopii (punkt 9).
+w razie potrzeby wraz z przywróceniem kopii (punkt 10).
 
 ---
 
-## 11. Migracje bazy danych
+## 12. Migracje bazy danych
 
 Migracjami zarządza **Alembic** (`backend/alembic/`).
 
@@ -386,7 +555,7 @@ API dotyczy wyłącznie SQLite).
 
 ---
 
-## 12. API i dokumentacja OpenAPI
+## 13. API i dokumentacja OpenAPI
 
 Wszystkie ścieżki są pod prefiksem `/api`:
 
@@ -414,7 +583,7 @@ zmienną `ENABLE_DOCS`. W produkcji domyślnie wyłączone (`ENABLE_DOCS=0`).
 
 ---
 
-## 13. Testy
+## 14. Testy
 
 ```bash
 # backend
@@ -436,7 +605,7 @@ raporty i eksporty, numerację dokumentów, PDF, backup oraz przywracanie bazy.
 
 ---
 
-## 14. Bezpieczeństwo
+## 15. Bezpieczeństwo
 
 - logowanie wymagane do każdego zasobu poza `/health`,
 - sesje serwerowe; w ciasteczku `HttpOnly` (`Secure` i `SameSite` w produkcji)
@@ -459,7 +628,7 @@ raporty i eksporty, numerację dokumentów, PDF, backup oraz przywracanie bazy.
 
 ---
 
-## 15. Rozbudowa w przyszłości
+## 16. Rozbudowa w przyszłości
 
 Projekt jest przygotowany pod dalszy rozwój:
 
@@ -478,7 +647,7 @@ Projekt jest przygotowany pod dalszy rozwój:
 
 ---
 
-## 16. Zastrzeżenie
+## 17. Zastrzeżenie
 
 Aplikacja jest narzędziem pomocniczym do prowadzenia własnej ewidencji. Nie jest
 certyfikowanym systemem księgowym, nie składa deklaracji podatkowych i nie zastępuje

@@ -32,8 +32,14 @@ export function readCookie(name: string): string {
   return match ? decodeURIComponent(match.slice(name.length + 1)) : '';
 }
 
+/**
+ * Przedrostek adresów — aplikacja może być zainstalowana w podkatalogu domeny
+ * (np. mojadomena.pl/ewidencja). Vite podstawia tu wartość `base` z builda.
+ */
+export const BASE_PATH = (import.meta.env.BASE_URL || '/').replace(/\/+$/, '');
+
 function buildUrl(path: string, params?: Record<string, unknown>): string {
-  const url = path.startsWith('/') ? path : `/${path}`;
+  const url = BASE_PATH + (path.startsWith('/') ? path : `/${path}`);
   if (!params) return url;
   const search = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {

@@ -3,7 +3,20 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
 // Backend jest osobnym procesem — w developmencie proxy przekazuje /api na port 8000.
+//
+// VITE_BASE_PATH pozwala zbudować aplikację do podkatalogu domeny
+// (np. VITE_BASE_PATH=/ewidencja/ dla adresu mojadomena.pl/ewidencja).
+// Adresy API, routing i service worker liczone są od tej wartości.
+const basePath = normalizeBase(process.env.VITE_BASE_PATH);
+
+function normalizeBase(value: string | undefined): string {
+  if (!value) return '/';
+  const withLeading = value.startsWith('/') ? value : `/${value}`;
+  return withLeading.endsWith('/') ? withLeading : `${withLeading}/`;
+}
+
 export default defineConfig({
+  base: basePath,
   plugins: [react()],
   server: {
     port: 5173,

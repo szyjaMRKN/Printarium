@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     upload_dir: Path = REPO_DIR / "uploads"
     database_url: str = ""
 
+    # Katalog ze zbudowanym frontendem. Puste = backend wystawia samo API
+    # (tak działa wariant z Dockerem, gdzie pliki statyczne serwuje Caddy).
+    # Ustawiany na hostingu współdzielonym, gdzie nie ma osobnego serwera statycznego.
+    frontend_dir: Path | None = None
+
     # --- sesje i ciasteczka ---
     session_cookie_name: str = "ewid_session"
     csrf_cookie_name: str = "ewid_csrf"
@@ -122,6 +127,21 @@ class Settings(BaseSettings):
     @property
     def max_upload_bytes(self) -> int:
         return self.max_upload_mb * 1024 * 1024
+
+    @property
+    def frontend_path(self) -> Path | None:
+        """Katalog z plikami frontendu — tylko jeśli faktycznie istnieje.
+
+        Ścieżkę względną liczymy od katalogu projektu, żeby w pliku `.env`
+        wystarczyło `FRONTEND_DIR=frontend`.
+        """
+        if self.frontend_dir is None:
+            return None
+        directory = self.frontend_dir
+        if not directory.is_absolute():
+            directory = REPO_DIR / directory
+        directory = directory.resolve()
+        return directory if (directory / "index.html").is_file() else None
 
     def ensure_directories(self) -> None:
         for directory in (self.data_dir, self.backup_dir, self.upload_dir):

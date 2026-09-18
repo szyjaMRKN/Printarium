@@ -3,9 +3,14 @@
  * Cache'ujemy wyłącznie powłokę aplikacji (pliki statyczne).
  * Praca offline na danych nie jest jeszcze obsługiwana — żądania /api
  * zawsze idą do sieci, żeby nie pokazywać nieaktualnych kwot.
+ *
+ * Wszystkie adresy liczone są od katalogu, w którym leży ten plik (BASE),
+ * bo aplikacja może być zainstalowana w podkatalogu domeny.
  */
-const CACHE_NAME = 'ewidencja-shell-v1';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon.svg'];
+const CACHE_NAME = 'ewidencja-shell-v2';
+const BASE = new URL('./', self.location).pathname;
+const INDEX = `${BASE}index.html`;
+const SHELL = [BASE, INDEX, `${BASE}manifest.webmanifest`, `${BASE}icons/icon.svg`];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -23,11 +28,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-  if (request.method !== 'GET' || url.pathname.startsWith('/api') || url.pathname === '/health') {
+  if (request.method !== 'GET' || url.pathname.startsWith(`${BASE}api`) || url.pathname === `${BASE}health`) {
     return;
   }
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('/index.html')));
+    event.respondWith(fetch(request).catch(() => caches.match(INDEX)));
     return;
   }
   event.respondWith(

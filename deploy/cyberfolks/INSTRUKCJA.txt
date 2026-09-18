@@ -1,0 +1,52 @@
+EWIDENCJA DZIAŁALNOŚCI NIEREJESTROWANEJ — INSTALACJA NA HOSTINGU
+================================================================
+
+Ta paczka jest gotowa do wgrania na hosting współdzielony z panelem
+DirectAdmin i modułem "Aplikacje Python" (Passenger), np. cyber_Folks.
+Pełny opis z obrazkami: README.md, rozdział "Hosting współdzielony".
+
+1. PANEL -> Aplikacje Python -> Utwórz aplikację
+   - wersja Pythona:        3.11 lub nowsza
+   - katalog aplikacji:     ewidencja            (Application root)
+   - adres aplikacji:       twojadomena.pl/ewidencja   (Application URL)
+   - plik startowy:         passenger_wsgi.py
+   - punkt wejścia:         application
+
+2. MENEDŻER PLIKÓW -> wejdź do katalogu aplikacji (np. /home/UŻYTKOWNIK/ewidencja)
+   - wgraj ewidencja-hosting.zip
+   - rozpakuj (Extract) w tym katalogu, nadpisując passenger_wsgi.py
+   - usuń plik zip
+
+3. USTAWIENIA: zmień nazwę pliku .env.przyklad na .env i sprawdź w nim:
+   - SECRET_KEY        — jest już wygenerowany, nie zmieniaj
+   - ADMIN_LOGIN       — login pierwszego administratora (domyślnie admin)
+   - ADMIN_PASSWORD    — hasło startowe wypisane przez skrypt budujący paczkę
+   - FRONTEND_DIR      — zostaw wartość "frontend"
+   - APP_ENV           — zostaw "production"
+
+4. PANEL -> Aplikacje Python -> edycja aplikacji
+   - w polu z plikiem zależności wskaż requirements.txt
+   - kliknij instalację zależności (pip install)
+   - uruchom/zrestartuj aplikację
+
+5. Wejdź na https://twojadomena.pl/ewidencja i zaloguj się.
+   Od razu zmień hasło: Ustawienia -> Moje konto.
+   Potem wykasuj wartość ADMIN_PASSWORD z pliku .env i zrestartuj aplikację.
+
+6. KOPIE ZAPASOWE — PANEL -> Zadania cron, codziennie o 3:00:
+     /home/UŻYTKOWNIK/virtualenv/ewidencja/3.11/bin/python -m app.cli auto-backup
+   z katalogiem roboczym /home/UŻYTKOWNIK/ewidencja/backend
+   (dokładną ścieżkę do Pythona pokazuje panel w sekcji "Wejdź do virtualenv").
+
+CO SPRAWDZIĆ, GDY COŚ NIE DZIAŁA
+--------------------------------
+- https://twojadomena.pl/ewidencja/health powinno zwrócić {"status":"ok",...}
+- błędy startu aplikacji trafiają do pliku stderr.log w katalogu aplikacji
+  oraz do logów domeny w panelu
+- po każdej zmianie pliku .env trzeba zrestartować aplikację w panelu
+
+CZEGO NIE ROBIĆ
+---------------
+- nie przenoś katalogów data/, backups/ i uploads/ do public_html —
+  zawierają bazę, kopie zapasowe i załączniki
+- nie kasuj pliku .env przy aktualizacji — to cała konfiguracja instalacji

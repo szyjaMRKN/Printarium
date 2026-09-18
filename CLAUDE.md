@@ -157,6 +157,7 @@ cd backend && .venv/bin/python -m pytest          # testy backendu
 cd backend && .venv/bin/python -m app.cli migrate # migracje + dane startowe
 cd frontend && npm install && npm test && npm run build
 docker compose config                              # walidacja wdrożenia
+./deploy/cyberfolks/build-package.sh /ewidencja    # paczka na hosting współdzielony
 ```
 
 ## Zasady, których nie wolno cofać
@@ -181,3 +182,12 @@ docker compose config                              # walidacja wdrożenia
    w `localStorage`.
 10. **Puste wpisy w `.env`** (np. `COOKIE_SECURE=`) muszą być traktowane jak brak
     wartości — obsługuje to walidator w `app/core/config.py`.
+11. **Dwie drogi wdrożenia, jedna aplikacja.** Docker Compose (Caddy serwuje pliki
+    statyczne) oraz hosting współdzielony z Passengerem (`deploy/cyberfolks/`),
+    gdzie ten sam proces oddaje API i powłokę SPA — włącza to `FRONTEND_DIR`.
+    Pod Passengerem nie działa `lifespan`, więc migracje odpala `passenger_wsgi.py`,
+    a harmonogram kopii — cron wywołujący `python -m app.cli auto-backup`.
+12. **Adres aplikacji w domenie jest wkompilowany w build frontendu**
+    (`VITE_BASE_PATH` → `import.meta.env.BASE_URL`): ścieżki API, `basename`
+    routera i zasięg service workera liczą się od niego. Nie wpisuj `/api`
+    ani `/sw.js` na sztywno.

@@ -12,3 +12,6 @@ python-dateutil==2.9.0.post0
 # Baza stref czasowych — obrazy Dockera bywają bez systemowej tzdata,
 # a aplikacja liczy daty w strefie Europe/Warsaw.
 tzdata==2025.2
+# Most ASGI -> WSGI dla hostingu współdzielonego (Passenger uruchamia WSGI).
+# Przy uruchomieniu przez uvicorn nieużywany.
+a2wsgi==1.10.10

@@ -6,7 +6,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
-from app.core.config import get_settings
+from app.core.config import Settings, get_settings
 
 SECURITY_HEADERS = {
     "X-Content-Type-Options": "nosniff",
@@ -15,6 +15,35 @@ SECURITY_HEADERS = {
     "Cross-Origin-Opener-Policy": "same-origin",
     "Permissions-Policy": "geolocation=(), microphone=(), camera=(), interest-cohort=()",
 }
+
+# API zwraca wyłącznie dane — całkowicie blokujemy wykonywanie skryptów.
+API_CSP = "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+
+# Polityka dla powłoki aplikacji, gdy frontend serwuje ten sam proces
+# (hosting współdzielony). Odpowiednik nagłówka z deploy/Caddyfile:
+# 'unsafe-inline' dla stylów jest potrzebny, bo biblioteka wykresów ustawia
+# style bezpośrednio na elementach SVG.
+APP_CSP = (
+    "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+    "script-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; "
+    "base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+)
+
+
+def _csp_for(request: Request, settings: Settings) -> str:
+    """Restrykcyjna polityka dla API, łagodniejsza dla powłoki aplikacji."""
+    if settings.frontend_dir is None:
+        return API_CSP
+    # Pod Passengerem aplikacja bywa podpięta w podkatalogu domeny — ścieżkę
+    # trasy liczymy bez tego przedrostka (root_path).
+    root_path = request.scope.get("root_path", "")
+    path = request.url.path
+    if root_path and path.startswith(root_path):
+        path = path[len(root_path) :] or "/"
+    prefix = settings.api_prefix.rstrip("/")
+    if path == "/health" or path == prefix or path.startswith(f"{prefix}/"):
+        return API_CSP
+    return APP_CSP
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -27,11 +56,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             response.headers.setdefault(
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
             )
-        # API zwraca wyłącznie dane — całkowicie blokujemy wykonywanie skryptów.
-        response.headers.setdefault(
-            "Content-Security-Policy",
-            "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
-        )
+        response.headers.setdefault("Content-Security-Policy", _csp_for(request, settings))
         return response
 
 

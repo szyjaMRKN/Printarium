@@ -19,6 +19,7 @@ from app.core.config import get_settings
 from app.core.errors import AppError
 from app.core.logging_config import configure_logging
 from app.core.middleware import RequestSizeLimitMiddleware, SecurityHeadersMiddleware
+from app.core.static import mount_frontend
 from app.core.version import APP_NAME, APP_VERSION
 
 logger = logging.getLogger("app")
@@ -26,8 +27,12 @@ logger = logging.getLogger("app")
 AUTO_BACKUP_INTERVAL_SECONDS = 300
 
 
-def _bootstrap() -> None:
-    """Migracje i dane startowe."""
+def bootstrap() -> None:
+    """Migracje, dane startowe i konto administratora ze zmiennych środowiskowych.
+
+    Wywoływane z `lifespan` (uvicorn) oraz z `passenger_wsgi.py` na hostingu
+    współdzielonym, gdzie serwer WSGI nie uruchamia zdarzeń lifespan.
+    """
     from app.db.seed import ensure_admin_from_env, seed_reference_data
     from app.db.session import session_scope
     from app.services.backup_service import run_migrations
@@ -64,7 +69,7 @@ async def _auto_backup_loop() -> None:
 async def lifespan(app: FastAPI):
     settings = get_settings()
     configure_logging(settings.app_debug)
-    _bootstrap()
+    bootstrap()
     task = asyncio.create_task(_auto_backup_loop())
     try:
         yield
@@ -145,6 +150,13 @@ def create_app() -> FastAPI:
             status_code=500,
             content={"detail": "Wystąpił nieoczekiwany błąd serwera.", "code": "blad_serwera"},
         )
+
+    # Frontend serwujemy tylko wtedy, gdy wskazano jego katalog (hosting
+    # współdzielony). Podpięcie musi być ostatnie — trasy API są wcześniej.
+    frontend = settings.frontend_path
+    if frontend is not None:
+        mount_frontend(app, frontend, prefix)
+        logger.info("Serwuję frontend z katalogu %s", frontend)
 
     return app
 

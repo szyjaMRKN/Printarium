@@ -5,6 +5,7 @@ Użycie:
     python -m app.cli reset-password --login admin
     python -m app.cli migrate
     python -m app.cli backup
+    python -m app.cli auto-backup
     python -m app.cli list-users
 """
 
@@ -85,6 +86,22 @@ def cmd_backup(_: argparse.Namespace) -> None:
         print(f"Utworzono kopię zapasową: {backup.filename}")
 
 
+def cmd_auto_backup(_: argparse.Namespace) -> None:
+    """Kopia zapasowa według harmonogramu z ustawień — do wywołania z crona.
+
+    Pod serwerem WSGI (hosting współdzielony) nie działa pętla z `app.main`,
+    która robi to w tle, więc harmonogram obsługuje cron wywołujący to
+    polecenie co godzinę. Kopia powstaje tylko wtedy, gdy jest zaplanowana
+    i nie została jeszcze dziś wykonana.
+    """
+    with session_scope() as session:
+        if not backup_service.due_for_automatic_backup(session):
+            print("Kopia zapasowa nie jest teraz zaplanowana — nic nie robię.")
+            return
+        backup = backup_service.create_backup(session, automatic=True, note="harmonogram")
+        print(f"Utworzono automatyczną kopię zapasową: {backup.filename}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Narzędzia administracyjne ewidencji")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -108,6 +125,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     backup = subparsers.add_parser("backup", help="Tworzy kopię zapasową bazy")
     backup.set_defaults(func=cmd_backup)
+
+    auto_backup = subparsers.add_parser(
+        "auto-backup",
+        help="Tworzy kopię zapasową, jeśli wypada według harmonogramu (dla crona)",
+    )
+    auto_backup.set_defaults(func=cmd_auto_backup)
 
     return parser
 

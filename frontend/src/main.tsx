@@ -24,7 +24,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeProvider>
         <ToastProvider>
           <AuthProvider>
-            <BrowserRouter>
+            <BrowserRouter basename={import.meta.env.BASE_URL}>
               <App />
             </BrowserRouter>
           </AuthProvider>
@@ -35,9 +35,11 @@ createRoot(document.getElementById('root')!).render(
 );
 
 // PWA: rejestracja service workera (tylko powłoka aplikacji, bez pracy offline na danych).
+// Adresy liczymy od `base`, bo aplikacja może stać w podkatalogu domeny.
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  const base = import.meta.env.BASE_URL || '/';
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((error) => {
+    navigator.serviceWorker.register(`${base}sw.js`, { scope: base }).catch((error) => {
       console.warn('Nie udało się zarejestrować service workera', error);
     });
   });

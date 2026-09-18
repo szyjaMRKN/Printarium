@@ -1,0 +1,52 @@
+# Buduje paczkę ewidencji na hosting współdzielony (DirectAdmin + Passenger).
+# Przydatne, gdy na własnym komputerze nie ma Node.js — plik ZIP pobierasz
+# z zakładki Actions i wgrywasz przez menedżer plików w panelu hostingu.
+name: Paczka na hosting
+
+on:
+  workflow_dispatch:
+    inputs:
+      sciezka:
+        description: 'Adres aplikacji w domenie (np. /ewidencja albo / dla własnej subdomeny)'
+        required: true
+        default: '/ewidencja'
+
+jobs:
+  paczka:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Buduj paczkę
+        env:
+          # Hasło startowe trafia tylko do pliku .env.przyklad w paczce,
+          # nie do publicznego logu przebiegu.
+          PRINT_ADMIN_PASSWORD: '0'
+        run: ./deploy/cyberfolks/build-package.sh "${{ inputs.sciezka }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ewidencja-hosting
+          path: dist/ewidencja-hosting.zip
+          retention-days: 7
+
+      - name: Podsumowanie
+        run: |
+          {
+            echo '## Paczka gotowa'
+            echo
+            echo "Adres aplikacji w domenie: \`${{ inputs.sciezka }}\`"
+            echo
+            echo 'Plik `ewidencja-hosting.zip` pobierzesz z sekcji **Artifacts** tego przebiegu.'
+            echo 'Hasło startowe administratora jest w pliku `.env.przyklad` (pole `ADMIN_PASSWORD`).'
+          } >> "$GITHUB_STEP_SUMMARY"
