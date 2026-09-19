@@ -145,6 +145,12 @@ if not katalogi_publiczne:
     wypisz(">>> Nie znalazłem żadnego katalogu public_html.")
 
 htaccess_aplikacji_istnieje = False
+# Ścieżka pliku .htaccess domeny, w której naprawdę stoi aplikacja — tylko ten
+# plik ma znaczenie, a łatwo pomylić go z inną domeną na tym samym koncie.
+plik_do_poprawki = None
+wordpress_przechwytuje = False
+regula_wyjatku_jest = False
+
 for public_html in katalogi_publiczne:
     wypisz("")
     wypisz("--- %s ---" % (public_html,))
@@ -166,10 +172,22 @@ for public_html in katalogi_publiczne:
     htaccess_domeny = os.path.join(public_html, ".htaccess")
     wypisz("")
     wypisz(".htaccess domeny:")
+    tresc_htaccess = ""
     if os.path.isfile(htaccess_domeny):
-        wypisz(czytaj_plik(htaccess_domeny))
+        tresc_htaccess = czytaj_plik(htaccess_domeny)
+        wypisz(tresc_htaccess)
     else:
         wypisz("(brak pliku)")
+
+    # Liczy się wyłącznie domena, w której faktycznie stoi katalog aplikacji.
+    if os.path.isdir(katalog_aplikacji):
+        plik_do_poprawki = htaccess_domeny
+        wordpress_przechwytuje = "/index.php [L]" in tresc_htaccess
+        regula_wyjatku_jest = ("RewriteRule ^%s" % (nazwa_aplikacji,)) in tresc_htaccess
+        wypisz("")
+        wypisz(">>> To jest domena aplikacji.")
+        wypisz(">>> reguła WordPressa przechwytuje adresy: %s" % ("TAK" if wordpress_przechwytuje else "nie",))
+        wypisz(">>> wyjątek dla /%s w tym pliku: %s" % (nazwa_aplikacji, "jest" if regula_wyjatku_jest else "BRAK"))
 
 # --------------------------------------------------------------------------
 naglowek("5. ZAINSTALOWANE ZALEŻNOŚCI")
@@ -257,10 +275,28 @@ elif not htaccess_aplikacji_istnieje:
     wypisz("Aplikacja działa poprawnie wewnątrz serwera, ale w katalogu domeny brakuje")
     wypisz("pliku .htaccess Passengera — dlatego żądania obsługuje WordPress.")
     wypisz("Sprawdź w panelu pole 'URL aplikacji' i zapisz ustawienia ponownie.")
+elif wordpress_przechwytuje and not regula_wyjatku_jest:
+    wypisz("Aplikacja działa wewnątrz serwera, ale reguły WordPressa przechwytują")
+    wypisz("jej adresy, zanim trafią do Passengera.")
+    wypisz("")
+    wypisz("Dopisz na SAMEJ GÓRZE tego pliku (i tylko tego):")
+    wypisz("")
+    wypisz("  %s" % (plik_do_poprawki,))
+    wypisz("")
+    wypisz("  # Aplikacja ewidencji (Passenger) - poza przepisywaniem WordPressa")
+    wypisz("  <IfModule mod_rewrite.c>")
+    wypisz("  RewriteEngine On")
+    wypisz("  RewriteRule ^%s($|/) - [L]" % (nazwa_aplikacji,))
+    wypisz("  </IfModule>")
+elif wordpress_przechwytuje and regula_wyjatku_jest:
+    wypisz("Wszystko na swoim miejscu: aplikacja startuje, a wyjątek dla /%s" % (nazwa_aplikacji,))
+    wypisz("jest już w pliku %s." % (plik_do_poprawki,))
+    wypisz("Jeśli adres nadal pokazuje WordPressa, zrestartuj aplikację w panelu")
+    wypisz("i odśwież stronę z pominięciem pamięci podręcznej (Ctrl+F5).")
 else:
-    wypisz("Aplikacja działa wewnątrz serwera i katalog w domenie ma .htaccess,")
-    wypisz("więc problem leży w kolejności reguł .htaccess (sekcja 4) — reguły")
-    wypisz("WordPressa przechwytują adresy aplikacji, zanim trafią do Passengera.")
+    wypisz("Aplikacja działa wewnątrz serwera i katalog w domenie ma .htaccess.")
+    wypisz("Jeśli adres nadal nie odpowiada, sprawdź w panelu pole 'URL aplikacji'")
+    wypisz("i zrestartuj aplikację.")
 
 # --------------------------------------------------------------------------
 raport = "\n".join(linie) + "\n"
