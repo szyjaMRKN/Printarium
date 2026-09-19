@@ -427,7 +427,8 @@ i przeczytaj sekcję „WNIOSEK" w raporcie.
 |---|---|
 | błąd 500 zaraz po wgraniu | zajrzyj do `stderr.log` w katalogu aplikacji i do logów domeny w panelu; najczęściej brak zainstalowanych zależności albo brak pliku `.env` |
 | „Brak SECRET_KEY…” w logu | plik nadal nazywa się `.env.przyklad` albo leży w złym katalogu (ma być w katalogu aplikacji, obok `passenger_wsgi.py`) |
-| strona główna działa, podstrony dają 404 WordPressa | reguły WordPressa z `public_html/.htaccess` przechwytują adresy aplikacji — w `public_html/ewidencja/.htaccess` dopisz na początku `RewriteEngine On` i `RewriteRule ^ - [L]` |
+| pod adresem aplikacji pokazuje się strona WordPressa | reguły WordPressa z `public_html/.htaccess` przepisują na `index.php` wszystko, co nie jest istniejącym plikiem — w tym adresy aplikacji. Dopisz w `public_html/.htaccess`, **nad** blokiem `# BEGIN WordPress` (i nad blokiem LSCACHE): `RewriteEngine On` oraz `RewriteRule ^ewidencja($\|/) - [L]` |
+| w `stderr.log` `UnicodeDecodeError: 'ascii' codec` przy starcie | proces ma lokalizację ASCII, a Alembic czyta `alembic.ini` w kodowaniu lokalizacji. Ten plik musi być czystym ASCII — pilnuje tego `tests/test_migracje.py` |
 | logowanie od razu wylogowuje | domena działa po HTTP — włącz certyfikat SSL i wymuszenie HTTPS w panelu |
 | puste strony, w konsoli błędy 404 na plikach `assets/` | paczka zbudowana dla innego adresu niż rzeczywisty — zbuduj ją ponownie z właściwą ścieżką |
 | zmiany w `.env` nic nie dają | po każdej zmianie trzeba zrestartować aplikację w panelu |

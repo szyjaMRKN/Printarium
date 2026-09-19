@@ -187,7 +187,11 @@ docker compose config                              # walidacja wdrożenia
     gdzie ten sam proces oddaje API i powłokę SPA — włącza to `FRONTEND_DIR`.
     Pod Passengerem nie działa `lifespan`, więc migracje odpala `passenger_wsgi.py`,
     a harmonogram kopii — cron wywołujący `python -m app.cli auto-backup`.
-12. **Adres aplikacji w domenie jest wkompilowany w build frontendu**
+12. **`backend/alembic.ini` tylko w ASCII.** Alembic i `logging.config.fileConfig`
+    czytają go w kodowaniu lokalizacji systemu, a hosting współdzielony startuje
+    proces w lokalizacji ASCII — jeden polski znak w komentarzu wywraca tam start
+    aplikacji (`UnicodeDecodeError`). Broni tego `tests/test_migracje.py`.
+13. **Adres aplikacji w domenie jest wkompilowany w build frontendu**
     (`VITE_BASE_PATH` → `import.meta.env.BASE_URL`): ścieżki API, `basename`
     routera i zasięg service workera liczą się od niego. Nie wpisuj `/api`
     ani `/sw.js` na sztywno.

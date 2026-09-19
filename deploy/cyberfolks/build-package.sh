@@ -64,36 +64,61 @@ done
 # Wzór konfiguracji z gotowym kluczem i hasłem startowym — na hostingu bez SSH
 # nie ma jak uruchomić `openssl rand`. Plik nazywa się `.env.przyklad`, żeby
 # ponowne rozpakowanie paczki (aktualizacja) nie nadpisało ustawień na serwerze.
-SECRET_KEY="$(python3 -c 'import secrets; print(secrets.token_urlsafe(48))')"
-ADMIN_PASSWORD="$(python3 - <<'PYGEN'
+ADMIN_PASSWORD="$(python3 - "${REPO_DIR}/.env.example" "${BUILD_DIR}/.env.przyklad" <<'PYGEN'
 import secrets
 import string
+import sys
 
-# Wymagania aplikacji: min. 10 znaków, małe i wielkie litery oraz cyfra.
-alphabet = string.ascii_letters + string.digits
+wzor, wynik = sys.argv[1], sys.argv[2]
+
+# Wymagania aplikacji: min. 10 znakow, male i wielkie litery oraz cyfra.
+alfabet = string.ascii_letters + string.digits
 while True:
-	candidate = "".join(secrets.choice(alphabet) for _ in range(16))
+	haslo = "".join(secrets.choice(alfabet) for _ in range(16))
 	if (
-		any(c.islower() for c in candidate)
-		and any(c.isupper() for c in candidate)
-		and any(c.isdigit() for c in candidate)
+		any(z.islower() for z in haslo)
+		and any(z.isupper() for z in haslo)
+		and any(z.isdigit() for z in haslo)
 	):
-		print(candidate)
 		break
+
+wartosci = {
+	"APP_ENV": "production",
+	"SECRET_KEY": secrets.token_urlsafe(48),
+	"ENABLE_DOCS": "0",
+	"ADMIN_PASSWORD": haslo,
+	# Ten sam proces serwuje API i interfejs — na hostingu nie ma osobnego
+	# serwera plikow statycznych.
+	"FRONTEND_DIR": "frontend",
+}
+# Ustawienia wylacznie dockerowe — na hostingu wspoldzielonym tylko myla.
+zbedne_klucze = ("APP_DOMAIN", "ACME_EMAIL", "APP_UID", "APP_GID")
+zbedne_naglowki = (
+	"# --- domena i HTTPS (Caddy) ---",
+	"# --- użytkownik systemowy dla katalogów danych (id -u / id -g) ---",
+)
+
+linie = []
+for wiersz in open(wzor, encoding="utf-8").read().splitlines():
+	obciety = wiersz.strip()
+	if obciety in zbedne_naglowki:
+		continue
+	klucz = obciety.split("=", 1)[0] if "=" in obciety else ""
+	if klucz in zbedne_klucze:
+		continue
+	if klucz in wartosci:
+		wiersz = "%s=%s" % (klucz, wartosci.pop(klucz))
+	linie.append(wiersz)
+
+for klucz, wartosc in wartosci.items():
+	linie.append("%s=%s" % (klucz, wartosc))
+
+with open(wynik, "w", encoding="utf-8") as plik:
+	plik.write("\n".join(linie).replace("\n\n\n", "\n\n") + "\n")
+
+print(haslo)
 PYGEN
 )"
-sed \
-	-e "s|^SECRET_KEY=.*|SECRET_KEY=${SECRET_KEY}|" \
-	-e "s|^APP_ENV=.*|APP_ENV=production|" \
-	-e "s|^ENABLE_DOCS=.*|ENABLE_DOCS=0|" \
-	-e "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=${ADMIN_PASSWORD}|" \
-	"${REPO_DIR}/.env.example" > "${BUILD_DIR}/.env.przyklad"
-cat >> "${BUILD_DIR}/.env.przyklad" <<ENV
-
-# --- hosting współdzielony (Passenger) ---
-# Katalog ze zbudowanym frontendem — ten sam proces serwuje API i aplikację.
-FRONTEND_DIR=frontend
-ENV
 
 echo "==> Pakuję"
 cd "${BUILD_DIR}"
